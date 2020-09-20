@@ -12,11 +12,12 @@ open Akka.TestKit
 open System.Collections.Generic
 
 let mutable finishedCount = 0
-let totalWorkers = 100
+let totalWorkers = 10
 let resList = new List<int64>()
 let mutable N_copy:int64 = 0L
+let mutable finishedList = Array.create 600 false
 
-let firstNSquare (n: int64) : int64 = (n*(n+1L)*(2L*n+1L))/6L
+let firstNSquare (n: int64) : int64 = ((n*(n+1L)*(2L*n+1L))/6L)
 
 let sumSquare (a:int64) (b:int64) : int64 = 
     let res1 = firstNSquare b 
@@ -50,15 +51,29 @@ type BossMessage =
 
 type WorkerMessage = WorkerMessage of int64 * int64 * int64
 
+let listPrinter (a: List<int64>) = 
+    for i in a do
+        printf "%d, " i
+    printfn ""
+
+let reduceList =
+    finishedList |> Array.contains false
+
 let WorkerActor (mailbox: Actor<_>) =
     let rec loop() = actor {
         let! WorkerMessage(st, en, k) = mailbox.Receive()
         for firstNum = st to en do
-            // printfn "testing : %d" st
+            printfn "At : %d\n" st
+            printfn ""
             if isSumPerfectSquare st (st+k-1L) then
+            
                 mailbox.Sender() <! WorkerTaskFinished(st, st+k-1L)
-                // printf "%d, " st
                 // resList.Add(st)
+            
+            // if finishedList.[int(st)-1] = false then
+            //     finishedList.[int(st)-1] <- true
+            if not reduceList then
+                listPrinter resList
         return! loop()
     }
     loop()
@@ -73,13 +88,13 @@ let supervisorHelper (N:int64) (k: int64) =
     let workersList = List.init totalWorkers (fun workerId -> spawn system (string workerId) WorkerActor)
     let mutable workerIdNum = 0;
     
-    for i in 1L .. perWorkerSegment .. N do
+    for i in 1L .. int64(5) .. N do
         // printfn "%d" workerIdNum
         // printfn "workerIdNum = %d" workerIdNum
         workersList.Item(workerIdNum) <! WorkerMessage(i, min N (i+perWorkerSegment-1L), k)
         // printfn "%d to %d" i (min N (i+perWorkerSegment-1L))
         workerIdNum <- workerIdNum + 1
-    printfn "workerIdNum = %d" workerIdNum
+    // printfn "workerIdNum = %d" workerIdNum
 
 
 let SupervisorActor (mailbox: Actor<_>) = 
@@ -90,20 +105,28 @@ let SupervisorActor (mailbox: Actor<_>) =
         | BossMessage(N, k) -> 
             supervisorHelper N k
         | WorkerTaskFinished(st,en) -> 
-            printfn ">>>>>>>>>>>>>%d %d" st en
+            printfn "found %d" st 
+            printfn ""
+            resList.Add(st)
+            // listPrinter r/esList
+
             
         return! loop ()
     }
     loop ()
 
 
+let main(args: array<string>) = 
+    let N = int64(args.[3])
+    let k = int64(args.[4])
+    let actorRef = spawn system "SupervisorActor" SupervisorActor
+    // printfn "the value of N: %d" N
+    // printfn "the value of k: %d" k
+    N_copy <- N
+    printfn "total running workers = %d" (totalRunningWorkers N_copy)
+    actorRef <! BossMessage(N, k)
+    System.Console.ReadKey() |> ignore
+    // printfn "chacha!"
+    
 
-let actorRef = spawn system "SupervisorActor" SupervisorActor
-printf "Enter the value of N: "
-let N = int64(System.Console.ReadLine())
-N_copy <- N
-printf "Enter the value of k: "
-let k = int64(System.Console.ReadLine())
-printfn "total running workers = %d" (totalRunningWorkers N_copy)
-actorRef <! BossMessage(N, k)
-System.Console.ReadKey() |> ignore
+main(Environment.GetCommandLineArgs())
