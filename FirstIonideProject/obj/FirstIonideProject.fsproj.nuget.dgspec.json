@@ -1,0 +1,64 @@
+{
+  "format": 1,
+  "restore": {
+    "/home/pooja/Akshay MS/DOSP/FirstIonideProject/FirstIonideProject.fsproj": {}
+  },
+  "projects": {
+    "/home/pooja/Akshay MS/DOSP/FirstIonideProject/FirstIonideProject.fsproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "/home/pooja/Akshay MS/DOSP/FirstIonideProject/FirstIonideProject.fsproj",
+        "projectName": "FirstIonideProject",
+        "projectPath": "/home/pooja/Akshay MS/DOSP/FirstIonideProject/FirstIonideProject.fsproj",
+        "packagesPath": "/home/pooja/.nuget/packages/",
+        "outputPath": "/home/pooja/Akshay MS/DOSP/FirstIonideProject/obj/",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "/home/pooja/.nuget/NuGet/NuGet.Config"
+        ],
+        "originalTargetFrameworks": [
+          "netcoreapp3.1"
+        ],
+        "sources": {
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "netcoreapp3.1": {
+            "projectReferences": {}
+          }
+        }
+      },
+      "frameworks": {
+        "netcoreapp3.1": {
+          "dependencies": {
+            "Akka.FSharp": {
+              "target": "Package",
+              "version": "[1.4.10, )"
+            },
+            "FSharp.Core": {
+              "target": "Package",
+              "version": "[4.7.2, )",
+              "generatePathProperty": true
+            }
+          },
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "/usr/share/dotnet/sdk/3.1.401/RuntimeIdentifierGraph.json"
+        }
+      }
+    }
+  }
+}
