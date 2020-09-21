@@ -67,7 +67,6 @@ let SupervisorActor (mailbox: Actor<_>) =
     let cpu_time_stamp = proc.TotalProcessorTime
     let timer = new Stopwatch()
     timer.Start()
-    // let debug = (totalRunningWorkers N_copy)
     let stopWatch = Diagnostics.Stopwatch.StartNew()
     let rec loop () = actor {
         let! msg = mailbox.Receive ()
@@ -93,7 +92,7 @@ let main(args: array<string>) =
     let k = int64(args.[4])
     N_copy <- N
     let actorRef = spawn system "SupervisorActor" SupervisorActor
-    printfn "total running workers = %d" (totalRunningWorkers N_copy)
+    printfn "Total workers = %d" (totalRunningWorkers N_copy)
     actorRef <! BossMessage(N, k)
 
 let time f = 
@@ -107,7 +106,7 @@ let time f =
         let cpu_time = (proc.TotalProcessorTime-cpu_time_stamp).TotalMilliseconds
         printfn "CPU time = %dms" (int64 cpu_time)
         printfn "Absolute time = %dms" timer.ElapsedMilliseconds
-        printfn "CPU:REAL Ratio=%f" (cpu_time/float timer.ElapsedMilliseconds)
+        printfn "CPU:REAL Ratio = %f" (cpu_time/float timer.ElapsedMilliseconds)
 
 // time (fun () -> main(Environment.GetCommandLineArgs()))
 main(Environment.GetCommandLineArgs())
