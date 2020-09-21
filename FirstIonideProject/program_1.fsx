@@ -67,7 +67,6 @@ let SupervisorActor (mailbox: Actor<_>) =
     let cpu_time_stamp = proc.TotalProcessorTime
     let timer = new Stopwatch()
     timer.Start()
-    // let debug = (totalRunningWorkers N_copy)
     let stopWatch = Diagnostics.Stopwatch.StartNew()
     let rec loop () = actor {
         let! msg = mailbox.Receive ()
