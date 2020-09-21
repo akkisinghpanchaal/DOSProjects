@@ -11,7 +11,7 @@ open System.Diagnostics
 open System.Collections.Generic
 
 
-let totalWorkers = 100
+let totalWorkers = 50
 let mutable N_copy:int64 = 0L
 let firstNSquare (n: int64) : int64 = ((n*(n+1L)*(2L*n+1L))/6L)
 
