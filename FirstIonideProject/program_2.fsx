@@ -1,5 +1,5 @@
 ﻿// ActorSayHello.fsx
-#time "on"
+// #time "on"
 #r "nuget: Akka.FSharp" 
 #r "nuget: Akka.TestKit" 
 // #load "Bootstrap.fsx"
@@ -12,7 +12,7 @@ open Akka.TestKit
 open System.Collections.Generic
 
 let mutable finishedCount = 0
-let totalWorkers = 10
+let totalWorkers = 100
 let resList = new List<int64>()
 let mutable N_copy:int64 = 0L
 let mutable finishedList = Array.create 600 false
@@ -63,17 +63,16 @@ let WorkerActor (mailbox: Actor<_>) =
     let rec loop() = actor {
         let! WorkerMessage(st, en, k) = mailbox.Receive()
         for firstNum = st to en do
-            printfn "At : %d\n" st
-            printfn ""
-            if isSumPerfectSquare st (st+k-1L) then
-            
-                mailbox.Sender() <! WorkerTaskFinished(st, st+k-1L)
+            // printfn "At : %d\n" st
+            // printfn ""
+            if isSumPerfectSquare firstNum (firstNum+k-1L) then
+                mailbox.Sender() <! WorkerTaskFinished(firstNum, firstNum+k-1L)
                 // resList.Add(st)
             
             // if finishedList.[int(st)-1] = false then
             //     finishedList.[int(st)-1] <- true
-            if not reduceList then
-                listPrinter resList
+            // if not reduceList then
+            //     listPrinter resList
         return! loop()
     }
     loop()
@@ -88,7 +87,7 @@ let supervisorHelper (N:int64) (k: int64) =
     let workersList = List.init totalWorkers (fun workerId -> spawn system (string workerId) WorkerActor)
     let mutable workerIdNum = 0;
     
-    for i in 1L .. int64(5) .. N do
+    for i in 1L .. perWorkerSegment .. N do
         // printfn "%d" workerIdNum
         // printfn "workerIdNum = %d" workerIdNum
         workersList.Item(workerIdNum) <! WorkerMessage(i, min N (i+perWorkerSegment-1L), k)
@@ -98,6 +97,8 @@ let supervisorHelper (N:int64) (k: int64) =
 
 
 let SupervisorActor (mailbox: Actor<_>) = 
+    let mutable finishedCount  = 0
+
     let rec loop () = actor {
         let! msg = mailbox.Receive ()
         // printfn "%d %d" N k
@@ -105,12 +106,11 @@ let SupervisorActor (mailbox: Actor<_>) =
         | BossMessage(N, k) -> 
             supervisorHelper N k
         | WorkerTaskFinished(st,en) -> 
-            printfn "found %d" st 
-            printfn ""
-            resList.Add(st)
+            printfn "%d" st 
+            // if finishedCount = totalRunningWorkers(N_copy) then
+            // printfn ""
+            // resList.Add(st)
             // listPrinter r/esList
-
-            
         return! loop ()
     }
     loop ()
