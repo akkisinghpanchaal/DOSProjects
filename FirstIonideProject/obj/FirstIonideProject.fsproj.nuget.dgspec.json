@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "/home/pooja/Akshay MS/DOSP/FirstIonideProject/FirstIonideProject.fsproj": {}
+    "/home/pooja/Akshay MS/DOSP/DOSProjects/FirstIonideProject/FirstIonideProject.fsproj": {}
   },
   "projects": {
-    "/home/pooja/Akshay MS/DOSP/FirstIonideProject/FirstIonideProject.fsproj": {
+    "/home/pooja/Akshay MS/DOSP/DOSProjects/FirstIonideProject/FirstIonideProject.fsproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "/home/pooja/Akshay MS/DOSP/FirstIonideProject/FirstIonideProject.fsproj",
+        "projectUniqueName": "/home/pooja/Akshay MS/DOSP/DOSProjects/FirstIonideProject/FirstIonideProject.fsproj",
         "projectName": "FirstIonideProject",
-        "projectPath": "/home/pooja/Akshay MS/DOSP/FirstIonideProject/FirstIonideProject.fsproj",
+        "projectPath": "/home/pooja/Akshay MS/DOSP/DOSProjects/FirstIonideProject/FirstIonideProject.fsproj",
         "packagesPath": "/home/pooja/.nuget/packages/",
-        "outputPath": "/home/pooja/Akshay MS/DOSP/FirstIonideProject/obj/",
+        "outputPath": "/home/pooja/Akshay MS/DOSP/DOSProjects/FirstIonideProject/obj/",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "/home/pooja/.nuget/NuGet/NuGet.Config"
@@ -31,9 +31,19 @@
       "frameworks": {
         "netcoreapp3.1": {
           "dependencies": {
+            "Akka.Cluster": {
+              "target": "Package",
+              "version": "[*, )"
+            },
             "Akka.FSharp": {
               "target": "Package",
-              "version": "[1.4.10, )"
+              "version": "[1.4.10, )",
+              "generatePathProperty": true
+            },
+            "Akka.Remote": {
+              "target": "Package",
+              "version": "[1.4.10, )",
+              "generatePathProperty": true
             },
             "FSharp.Core": {
               "target": "Package",
