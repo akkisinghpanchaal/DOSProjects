@@ -1,6 +1,0 @@
-Real: 00:00:00.000, CPU: 00:00:00.000, GC gen0: 0, gen1: 0, gen2: 0
-Total workers = 50
-CPU time = 160ms
-Absolute time = 49ms
-CPU:REAL Ratio=3.200000
-Real: 00:00:29.949, CPU: 00:00:00.410, GC gen0: 6, gen1: 1, gen2: 0

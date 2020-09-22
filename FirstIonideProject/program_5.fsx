@@ -1,4 +1,4 @@
-﻿#time "on"
+﻿// #time "on"
 #r "nuget: Akka.FSharp" 
 #r "nuget: Akka.TestKit" 
 
@@ -73,8 +73,12 @@ let SupervisorActor (mailbox: Actor<_>) =
     let rec loop () = actor {
         let! msg = mailbox.Receive ()
         match msg with
-        | BossMessage(N, k) -> 
-            supervisorHelper N k
+        | BossMessage(N, k) ->
+            if(k < 1UL || N < 1UL) then
+                printfn "Please provide positive, non-zero integral values for N and K"
+                printfn "Press any key to exit..."
+            else
+                supervisorHelper N k
         | WorkerTaskFinished(st,c) -> 
             if c=1 && st > 0UL then
                 printfn "%d" st
