@@ -10,9 +10,10 @@ open Akka.TestKit
 open System.Diagnostics
 open System.Collections.Generic
 
-let mutable n:int = 0
-let mutable t, a = "",""
+let mutable numNodes:int = 0
+let mutable topology, algorithm = "",""
 let rnd = System.Random()
+let mutable workersList = []
 
 let listPrinter (a: List<uint64>) = 
     for i in a do
@@ -33,11 +34,21 @@ let WorkerActor (mailbox: Actor<_>) =
     let rec loop() = actor {
         let! WorkerMessage(idx , gossip) = mailbox.Receive()
         let  randState = rnd.Next()%2
-        printf "idx: %d, Msg %s Randstate %d" idx gossip randState
-        hcount <- hcount+1
+        printf "idx: %d, Msg %s Randstate %d\n" idx gossip randState
+        
         if hcount = 10 then
-            printf "idx: %d, Msg %s" idx gossip
+            printf "Doneidx: %d, Msg %s" idx gossip
             mailbox.Sender() <! WorkerTaskFinished(1)
+        else 
+            if idx = 1 then
+                workersList.[2] <! WorkerMessage(2,"gossip")
+            elif idx = numNodes then
+                workersList.[numNodes-1] <! WorkerMessage(numNodes-1,"gossip")
+            elif randState = 0 then
+                workersList.[idx-1] <! WorkerMessage(idx-1,"gossip")
+            else
+                workersList.[idx+1] <! WorkerMessage(idx+1,"gossip")
+        hcount <- hcount+1
         return! loop()
     }
     loop()
@@ -45,12 +56,12 @@ let WorkerActor (mailbox: Actor<_>) =
 
 // *************** SUPERVISOR ACTOR'S HELPER UTILITY **************
 let supervisorHelper (N:int) = 
-    let workersList = List.init n (fun workerId -> spawn system (string workerId) WorkerActor)
-    printfn "l.Count: %i, l.Capacity: %i" n  workersList.Length
+    workersList <- List.init numNodes (fun workerId -> spawn system (string workerId) WorkerActor)
+    printfn "l.Count: %i, l.Capacity: %i" numNodes  workersList.Length
     let mutable workerIdNum = 0;
-    printfn "# of Nodes = %d\nTopology = %s\nAlgorithm = %s" n t a
-    for i in 1 .. N do
-        workersList.[workerIdNum] <! WorkerMessage(i,"gossip")
+    printfn "# of Nodes = %d\nTopology = %s\nAlgorithm = %s" numNodes topology algorithm
+    // for i in 1 .. N do
+    workersList.[workerIdNum] <! WorkerMessage(1,"gossip")
         // workerIdNum <- workerIdNum + 1
     
 
@@ -77,11 +88,11 @@ let SupervisorActor (mailbox: Actor<_>) =
             //     printfn "Please provide positive, non-zero integral values for N and K"
             //     printfn "Press any key to exit..."
             // else
-                supervisorHelper n
+                supervisorHelper N
         | WorkerTaskFinished(c) -> 
             count <- count + c
 
-            if count =  n then
+            if count =  numNodes then
                 printfn "========\nResults:"
                 printfn "================\n"
                 timer.Stop()
@@ -95,10 +106,10 @@ let SupervisorActor (mailbox: Actor<_>) =
 
 
 let main(args: array<string>) = 
-    let numNodes,topology,algo = int(args.[3]),string(args.[4]),string(args.[5])
-    n<-numNodes
-    t<-topology
-    a<-algo
+    let N,topo,algo = int(args.[3]),string(args.[4]),string(args.[5])
+    numNodes <-N
+    topology<-topo
+    algorithm<-algo
     let actorRef = spawn system "SupervisorActor" SupervisorActor
     match topology with
         | "full" -> printfn "full"
