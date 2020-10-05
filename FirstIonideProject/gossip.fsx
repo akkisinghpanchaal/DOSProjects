@@ -37,7 +37,7 @@ let WorkerActor (mailbox: Actor<_>) =
         printf "idx: %d, Msg %s Randstate %d\n" idx gossip randState
         
         if hcount = 10 then
-            printf "Doneidx: %d, Msg %s" idx gossip
+            printf "Done idx: %d, Msg %s" idx gossip
             mailbox.Sender() <! WorkerTaskFinished(1)
         else 
             if idx = 1 then
