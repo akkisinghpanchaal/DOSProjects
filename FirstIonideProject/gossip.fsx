@@ -4,40 +4,33 @@
 
 open System
 open Akka.Actor
-open Akka.Configuration
 open Akka.FSharp
-open Akka.TestKit
 open System.Diagnostics
 open System.Collections.Generic
 
+let system = ActorSystem.Create("FSharp")
+let rnd = System.Random()
+
 let mutable numNodes:int = 0
 let mutable topology, algorithm = "",""
-let rnd = System.Random()
 let mutable workersList = []
 
-let listPrinter (a: List<uint64>) = 
-    for i in a do
-        printf "%d, " i
-    printfn ""
-
-let system = ActorSystem.Create("FSharp")
-
-type BossMessage = 
+type Message = 
     | BossMessage of int
     | WorkerTaskFinished of int
 
 type WorkerMessage = WorkerMessage of int * string
 
 // *********** WORKER ACTOR LOGIC **********
-let WorkerActor (mailbox: Actor<_>) =
+let GossipActor (mailbox: Actor<_>) =
     let mutable hcount=0
     let rec loop() = actor {
         let! WorkerMessage(idx , gossip) = mailbox.Receive()
         let  randState = rnd.Next()%2
-        printf "idx: %d, Msg %s Randstate %d\n" idx gossip randState
-        
+        printf "idx: %d heardCount %d\n" idx hcount
+
         if hcount = 10 then
-            printf "Done idx: %d, Msg %s" idx gossip
+            printf "Done idx: %d, Msg %s\n" idx gossip
             mailbox.Sender() <! WorkerTaskFinished(1)
         else 
             if idx = 1 then
@@ -56,7 +49,7 @@ let WorkerActor (mailbox: Actor<_>) =
 
 // *************** SUPERVISOR ACTOR'S HELPER UTILITY **************
 let supervisorHelper (N:int) = 
-    workersList <- List.init numNodes (fun workerId -> spawn system (string workerId) WorkerActor)
+    workersList <- List.init numNodes (fun workerId -> spawn system (string workerId) GossipActor)
     printfn "l.Count: %i, l.Capacity: %i" numNodes  workersList.Length
     let mutable workerIdNum = 0;
     printfn "# of Nodes = %d\nTopology = %s\nAlgorithm = %s" numNodes topology algorithm
@@ -84,11 +77,7 @@ let SupervisorActor (mailbox: Actor<_>) =
         match msg with
         // Process main input
         | BossMessage(N) ->
-            // if(N < 1UL) then
-            //     printfn "Please provide positive, non-zero integral values for N and K"
-            //     printfn "Press any key to exit..."
-            // else
-                supervisorHelper N
+            supervisorHelper N
         | WorkerTaskFinished(c) -> 
             count <- count + c
 
