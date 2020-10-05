@@ -12,8 +12,7 @@ open System.Collections.Generic
 
 let mutable n:int = 0
 let mutable t, a = "",""
-let mutable workersList = []
-
+let rnd = System.Random()
 
 let listPrinter (a: List<uint64>) = 
     for i in a do
@@ -33,9 +32,10 @@ let WorkerActor (mailbox: Actor<_>) =
     let mutable hcount=0
     let rec loop() = actor {
         let! WorkerMessage(idx , gossip) = mailbox.Receive()
-        printf "idx: %d, Msg %s" idx gossip
+        let  randState = rnd.Next()%2
+        printf "idx: %d, Msg %s Randstate %d" idx gossip randState
         hcount <- hcount+1
-        if hcount = 10 then        
+        if hcount = 10 then
             printf "idx: %d, Msg %s" idx gossip
             mailbox.Sender() <! WorkerTaskFinished(1)
         return! loop()
@@ -45,12 +45,12 @@ let WorkerActor (mailbox: Actor<_>) =
 
 // *************** SUPERVISOR ACTOR'S HELPER UTILITY **************
 let supervisorHelper (N:int) = 
-    workersList = List.init n (fun workerId -> spawn system (string workerId) WorkerActor) |> ignore
+    let workersList = List.init n (fun workerId -> spawn system (string workerId) WorkerActor)
     printfn "l.Count: %i, l.Capacity: %i" n  workersList.Length
     let mutable workerIdNum = 0;
     printfn "# of Nodes = %d\nTopology = %s\nAlgorithm = %s" n t a
-    // for i in 1UL .. N do
-    workersList.[workerIdNum] <! WorkerMessage(0,"gossip")
+    for i in 1 .. N do
+        workersList.[workerIdNum] <! WorkerMessage(i,"gossip")
         // workerIdNum <- workerIdNum + 1
     
 
@@ -77,7 +77,7 @@ let SupervisorActor (mailbox: Actor<_>) =
             //     printfn "Please provide positive, non-zero integral values for N and K"
             //     printfn "Press any key to exit..."
             // else
-                supervisorHelper N
+                supervisorHelper n
         | WorkerTaskFinished(c) -> 
             count <- count + c
 
