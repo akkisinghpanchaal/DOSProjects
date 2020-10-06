@@ -28,7 +28,6 @@ let getRandomNeighbor (idx:int) =
             while randState = idx do
                 randState <- rnd.Next()% numNodes
             neighs <- [|randState|]
-            printfn "full"
         | "2D" -> 
             let r = int idx / rowSz
             let c = idx % rowSz
@@ -40,14 +39,22 @@ let getRandomNeighbor (idx:int) =
                 neighs <- Array.append neighs [|(r*rowSz)+c+1|]
             if c-1>= 0 then
                 neighs <- Array.append neighs [|(r*rowSz)+c-1|]
-            printfn "2D"
         | "line" -> 
-            printfn "line"
+            let mutable randState = rnd.Next()% 2
+            if numNodes >1 then
+                if idx = 0 then
+                    neighs <- Array.append neighs [|1|]
+                elif idx = numNodes-1 then
+                    neighs <- Array.append neighs [|numNodes-2|]
+                elif randState = 0 then
+                    neighs <- Array.append neighs [|idx-1|]
+                else
+                    neighs <- Array.append neighs [|idx+1|]
         | "imp2D" -> 
             printfn "imp2D"
         |_ ->
-            printfn "DEf"
-    neighs
+            printfn "UnDEf!"
+    neighs.[(rnd.Next()%neighs.Length)]
 
 
 // *********** WORKER ACTOR LOGIC **********
@@ -55,25 +62,20 @@ let GossipActor (mailbox: Actor<_>) =
     let mutable hcount=0
     let rec loop() = actor {
         let! WorkerMessage(idx , gossip) = mailbox.Receive()
-        printf "idx: %d heardCount %d minheard %d\n" idx hcount (actorStates |> Array.min)
-        actorStates.[idx] <- actorStates.[idx] + 1
-        let randState = rnd.Next()%2
         hcount <- hcount+1
-        printf "for topo : %s nieghbours are %A" topology (getRandomNeighbor idx)
+        actorStates.[idx] <- hcount
+        printf "idx: %d heardCount %d minheard %d\n" idx hcount (actorStates |> Array.min)
+        let randState = rnd.Next()%2
         printfn ""
-        if (actorStates |> Array.min) = 3 then
+        if (actorStates |> Array.min) = 3 then //END Cond
             mailbox.Sender() <! WorkerTaskFinished(1)
             printf "Done  Msg %s\n" gossip
             printfn "%A" actorStates
-        elif numNodes >1 then
-            if idx = 0 then
-                workersList.[1] <! WorkerMessage(1,"gossip")
-            elif idx = numNodes-1 then
-                workersList.[numNodes-2] <! WorkerMessage(numNodes-2,"gossip")
-            elif randState = 0 then
-                workersList.[idx-1] <! WorkerMessage(idx-1,"gossip")
-            else
-                workersList.[idx+1] <! WorkerMessage(idx+1,"gossip")
+        else
+            let nextRandNeigh = getRandomNeighbor idx
+            printf "Next Random nieghbours %d\n" nextRandNeigh
+            workersList.[nextRandNeigh] <! WorkerMessage(nextRandNeigh,"gossip")
+
         return! loop()
     }
     loop()
