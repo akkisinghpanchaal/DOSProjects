@@ -31,14 +31,14 @@ let getRandomNeighbor (idx:int) =
             printfn "full"
         | "2D" -> 
             let r = int idx / rowSz
-            let c = idx-(rowSz*r)
+            let c = idx % rowSz
             if (r+1)< rowSz then
                 neighs <- Array.append neighs [|((r+1)*rowSz)+c|]
             if r-1>= 0 then
                 neighs <- Array.append neighs [|((r-1)*rowSz)+c|]
             if c+1< rowSz then
                 neighs <- Array.append neighs [|(r*rowSz)+c+1|]
-            if c-1< rowSz then
+            if c-1>= 0 then
                 neighs <- Array.append neighs [|(r*rowSz)+c-1|]
             printfn "2D"
         | "line" -> 
@@ -59,6 +59,8 @@ let GossipActor (mailbox: Actor<_>) =
         actorStates.[idx] <- actorStates.[idx] + 1
         let randState = rnd.Next()%2
         hcount <- hcount+1
+        printf "for topo : %s nieghbours are %A" topology (getRandomNeighbor idx)
+        printfn ""
         if (actorStates |> Array.min) = 3 then
             mailbox.Sender() <! WorkerTaskFinished(1)
             printf "Done  Msg %s\n" gossip
