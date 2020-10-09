@@ -28,7 +28,6 @@ let getRandomNeighbor (idx:int) =
             while randState = idx do
                 randState <- rnd.Next()% numNodes
             neighs <- [|randState|]
-            printfn "full"
         | "2D" -> 
             let r = int idx / rowSz
             let c = idx % rowSz
@@ -40,15 +39,22 @@ let getRandomNeighbor (idx:int) =
                 neighs <- Array.append neighs [|(r*rowSz)+c+1|]
             if c-1>= 0 then
                 neighs <- Array.append neighs [|(r*rowSz)+c-1|]
-            printfn "2D"
         | "line" -> 
-            printfn "line"
+            let mutable randState = rnd.Next()% 2
+            if numNodes >1 then
+                if idx = 0 then
+                    neighs <- Array.append neighs [|1|]
+                elif idx = numNodes-1 then
+                    neighs <- Array.append neighs [|numNodes-2|]
+                elif randState = 0 then
+                    neighs <- Array.append neighs [|idx-1|]
+                else
+                    neighs <- Array.append neighs [|idx+1|]
         | "imp2D" -> 
             printfn "imp2D"
         |_ ->
-            printfn "DEf"
-    // chose one on neighs and send its idx in the arr
-    neighs
+            printfn "UnDEf!"
+    neighs.[(rnd.Next()%neighs.Length)]
 
 
 // *********** WORKER ACTOR LOGIC **********
@@ -57,41 +63,19 @@ let GossipActor (mailbox: Actor<_>) =
     let rec loop() = actor {
         let! WorkerMessage(idx , gossip) = mailbox.Receive()
         hcount <- hcount+1
-        printf "idx: %d heardCount %d minheard %d\n" idx hcount (actorStates |> Array.min)
         actorStates.[idx] <- hcount
-        printf "for topo : %s nieghbours are %A" topology (getRandomNeighbor idx)
-        printfn ""
-        if (actorStates |> Array.min) = 3 then
-            mailbox.Sender() <! WorkerTaskFinished(1)
-            printf "Done  Msg %s\n" gossip
-            printfn "%A" actorStates
-        elif numNodes >1 then
-            let randState = rnd.Next()%2
-            if idx = 0 then
-                workersList.[1] <! WorkerMessage(1,"gossip")
-            elif idx = numNodes-1 then
-                workersList.[numNodes-2] <! WorkerMessage(numNodes-2,"gossip")
-            elif randState = 0 then
-                workersList.[idx-1] <! WorkerMessage(idx-1,"gossip")
-            else
-                workersList.[idx+1] <! WorkerMessage(idx+1,"gossip")
+        // printf "idx: %d heardCount %d minheard %d\n" idx hcount (actorStates |> Array.min)
+        if (actorStates |> Array.min) = 10 then //END Cond
+            select "/user/SupervisorActor" system <! WorkerTaskFinished(1)
+        else
+            let nextRandNeigh = getRandomNeighbor idx
+            // printf "Next Random nieghbours %d\n" nextRandNeigh
+            workersList.[nextRandNeigh] <! WorkerMessage(nextRandNeigh,"gossip")
+
         return! loop()
     }
     loop()
 
-
-// *************** SUPERVISOR ACTOR'S HELPER UTILITY **************
-let supervisorHelper (start:int)= 
-    workersList <- [| for i in 1 .. numNodes -> spawn system (string i) GossipActor |]
-    // for push-sum  add cond
-    // if algo = 'gossip then 
-    actorStates <-  Array.zeroCreate numNodes
-    //else
-    // actorStates   [[si,wi].... numNodes]
-    printfn "Capacity: %i" workersList.Length
-    printfn "# of Nodes = %d\nTopology = %s\nAlgorithm = %s" numNodes topology algorithm
-    workersList.[start] <! WorkerMessage(start,"gossip")
-    
 
 // *********** SUPERVISOR ACTOR LOGIC **********
 let SupervisorActor (mailbox: Actor<_>) = 
@@ -104,33 +88,35 @@ let SupervisorActor (mailbox: Actor<_>) =
         match msg with
         // Process main input
         | BossMessage(start) ->
-            supervisorHelper start
+            workersList <- [| for i in 1 .. numNodes -> spawn system (string i) GossipActor |]
+            actorStates <-  Array.zeroCreate numNodes
+            printfn "# of Nodes = %d\nTopology = %s\nAlgorithm = %s" numNodes topology algorithm
+            workersList.[start] <! WorkerMessage(start,"gossip")
+    
         | WorkerTaskFinished(c) -> 
             printfn "%A" actorStates
-            printfn "========\nResults:"
-            printfn "================\n"
             stopWatch.Stop()
-            printfn "Totel run time = %fms" stopWatch.Elapsed.TotalMilliseconds
+            printfn "Total run time = %fms" stopWatch.Elapsed.TotalMilliseconds
         return! loop ()
     }
     loop ()
 
 
 let main(args: array<string>) = 
-    let N,topo,algo = int(args.[3]),string(args.[4]),string(args.[5])
+    let n,topo,algo = int(args.[3]),string(args.[4]),string(args.[5])
     let mutable errorFlag = false
-    numNodes <-N
+    numNodes <-n
     topology<-topo
     algorithm<-algo
     let actorRef  = spawn system "SupervisorActor" SupervisorActor
-    match algo with
-        | "gossip" ->
-            printfn "gossip"
-        | "push-sum" ->
-            printfn "push-sum"
-        | _ ->
-            errorFlag <- true
-            printfn "ERROR: Algorithm not present"
+    // match algo with
+    //     | "gossip" ->
+    //         printfn "gossip"
+    //     | "push-sum" ->
+    //         printfn "push-sum"
+    //     | _ ->
+    //         errorFlag <- true
+    //         printfn "ERROR: Algorithm not present"
     match topology with
         | "full" -> 
             printfn "full"
