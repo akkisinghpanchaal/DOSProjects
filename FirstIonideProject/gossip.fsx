@@ -47,6 +47,7 @@ let getRandomNeighbor (idx:int) =
             printfn "imp2D"
         |_ ->
             printfn "DEf"
+    // chose one on neighs and send its idx in the arr
     neighs
 
 
@@ -55,10 +56,9 @@ let GossipActor (mailbox: Actor<_>) =
     let mutable hcount=0
     let rec loop() = actor {
         let! WorkerMessage(idx , gossip) = mailbox.Receive()
-        printf "idx: %d heardCount %d minheard %d\n" idx hcount (actorStates |> Array.min)
-        actorStates.[idx] <- actorStates.[idx] + 1
-        let randState = rnd.Next()%2
         hcount <- hcount+1
+        printf "idx: %d heardCount %d minheard %d\n" idx hcount (actorStates |> Array.min)
+        actorStates.[idx] <- hcount
         printf "for topo : %s nieghbours are %A" topology (getRandomNeighbor idx)
         printfn ""
         if (actorStates |> Array.min) = 3 then
@@ -66,6 +66,7 @@ let GossipActor (mailbox: Actor<_>) =
             printf "Done  Msg %s\n" gossip
             printfn "%A" actorStates
         elif numNodes >1 then
+            let randState = rnd.Next()%2
             if idx = 0 then
                 workersList.[1] <! WorkerMessage(1,"gossip")
             elif idx = numNodes-1 then
@@ -82,7 +83,11 @@ let GossipActor (mailbox: Actor<_>) =
 // *************** SUPERVISOR ACTOR'S HELPER UTILITY **************
 let supervisorHelper (start:int)= 
     workersList <- [| for i in 1 .. numNodes -> spawn system (string i) GossipActor |]
+    // for push-sum  add cond
+    // if algo = 'gossip then 
     actorStates <-  Array.zeroCreate numNodes
+    //else
+    // actorStates   [[si,wi].... numNodes]
     printfn "Capacity: %i" workersList.Length
     printfn "# of Nodes = %d\nTopology = %s\nAlgorithm = %s" numNodes topology algorithm
     workersList.[start] <! WorkerMessage(start,"gossip")
