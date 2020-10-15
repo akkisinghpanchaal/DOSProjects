@@ -65,23 +65,19 @@ let getRandomNeighbor2D (idx: int) (isImperfect: bool): int =
     
 
 let getRandomNeighborLine (idx: int): int =
-    let mutable neighs = [||]
     let mutable randNbr = -1
-    if numNodes > 1 then
-        if idx = 0 then
-            randNbr <- 1
-        elif idx = numNodes-1 then
-            randNbr <- numNodes-2
-        else
-            randNbr <- idx - 1
-            let randState = rnd.Next()%2
-            if randState = 1 then
-                randNbr <- idx + 1
-    neighs <- Array.append neighs [|randNbr|]
-    neighs.[rnd.Next() % neighs.Length]
+    if idx = 0 then
+        randNbr <- 1
+    elif idx = numNodes-1 then
+        randNbr <- numNodes-2
+    else
+        randNbr <- idx - 1
+        let randState = rnd.Next()%2
+        if randState = 1 then
+            randNbr <- idx + 1
+    randNbr
 
 let getRandomNeighbor (idx:int): int =
-    // let mutable neighs = [||]
     let mutable randNbr = idx
     match topology.ToLower() with
         | "full" -> 
@@ -117,6 +113,7 @@ let GossipActor (mailbox: Actor<_>) =
             actorStates.[idx] <- hcount
             //printfn ""
             if hcount < threshold then
+            // if (actorStates |> Array.min) < threshold then
                let randNbr = getRandomNeighbor idx
                workersList.[randNbr] <! WorkerMessage(randNbr, "gossip")
             else
@@ -164,7 +161,8 @@ let supervisorHelper (start:int)=
     actorStates <-  Array.zeroCreate numNodes
     actorStatesPushSum <-  Array.zeroCreate numNodes
     
-    //printfn "# of Nodes = %d\nTopology = %s\nAlgorithm = %s" numNodes topology algorithm
+    // printfn "# of Nodes = %d\nTopology = %s\nAlgorithm = %s" numNodes topology algorithm
+    printfn "# of Nodes = %d\n" numNodes
     match algorithm with
     | "gossip" ->
         workersList.[start] <! WorkerMessage(start,"gossip")
