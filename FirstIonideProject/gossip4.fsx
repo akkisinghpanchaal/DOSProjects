@@ -120,7 +120,7 @@ let GossipActor (mailbox: Actor<_>) =
                 select "/user/SupervisorActor" system <! WorkerTaskFinished(1)
                 //  printf "Done  Msg %s\n" gossip
         | WorkerMessagePushSum(idx, sIn, wIn) ->
-            if hcount < threshold then
+            if hcount < 3 then
                 // initial setup
                 if s = -1.0 then
                     s <- float idx
