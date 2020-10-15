@@ -58,8 +58,10 @@ let getRandomNeighbor2D (idx: int) (isImperfect: bool): int =
         randNbr <- getRandomNeighborFull idx
         while (findIndex neighs randNbr) > -1 do
             randNbr <- getRandomNeighborFull idx
-    neighs <- Array.append neighs [|randNbr|]
+        neighs <- Array.append neighs [|randNbr|]
     neighs.[rnd.Next() % neighs.Length]
+    
+
     
 
 let getRandomNeighborLine (idx: int): int =
