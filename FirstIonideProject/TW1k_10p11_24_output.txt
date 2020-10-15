@@ -1,5 +1,6 @@
 Real: 00:00:00.000, CPU: 00:00:00.000, GC gen0: 0, gen1: 0, gen2: 0
-total running workers = 1000
+Total workers = 1000
+Subproblems per worker = 100000000
 1
 9
 20
