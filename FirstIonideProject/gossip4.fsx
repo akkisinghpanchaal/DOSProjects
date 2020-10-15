@@ -56,7 +56,7 @@ let getRandomNeighbor2D (idx: int) (isImperfect: bool): int =
     // to either the node or its immediate neighbors
     if isImperfect then
         randNbr <- getRandomNeighborFull idx
-        while (findIndex neighs randNbr) > -1 || idx>=numNodes do
+        while (findIndex neighs randNbr) > -1 do
             randNbr <- getRandomNeighborFull idx
     randNbr
 
@@ -224,6 +224,8 @@ let main(args: array<string>) =
             printfn "line"
         | "imp2d" -> 
             rowSz <- numNodes |> float |> sqrt |> ceil |> int 
+            numNodes <- (rowSz * rowSz)
+            printfn "# of Nodes rounded up to:%d" numNodes
             printfn "imp2D"
         | _ -> 
             errorFlag <- true
