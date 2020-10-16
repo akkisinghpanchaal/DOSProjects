@@ -8,14 +8,22 @@ open Akka.FSharp
 
 let system = ActorSystem.Create("FSharp")
 let rnd = System.Random()
-let threshold = 10
+let gossipThreshold = 10
+let pushSumThreshold = 3
 let mutable numNodes:int = 0
 let mutable rowSz:int = 0 
 let mutable topology, algorithm = "",""
+
+// For the purpose of creating different topologies, we decided to use a flat list of actor references.
+// Based on the type of the topology in consideration, the random neighbor selection logic varies.
+// For instance, for a 2D topology, If we divide the current index by the row size of the grid, we get the 
+// corresponding row number of an element in the workersList. Similarly, the column number is determined by 
+// taking modulus of the current element's index with row size.
 let mutable workersList = [||]
+
 let mutable actorStates= [||]   
 let mutable actorStatesPushSum = [||]
-let pushSumThreshold: float = float(10) ** float(-10)
+let pushSumPrecision: float = float(10) ** float(-10)
 
 type BossMessage = 
     | BossMessage of int
@@ -32,12 +40,20 @@ let findIndex arr elem =
     | _ -> -1
 
 let getRandomNeighborFull (idx:int): int =
+    // get random index from the full network
     let mutable randNbr = rnd.Next()% numNodes
     while randNbr = idx do
         randNbr <- rnd.Next()% numNodes
     randNbr
 
 let getRandomNeighbor2D (idx: int) (isImperfect: bool): int =
+    (* 
+        If we divide the current index by the row size of the grid, we get the 
+        corresponding row number of an element in the workersList. Similarly, the column number is determined by 
+        taking modulus of the current element's index with row size.
+
+        In case the isImperfect flag is True, we also consider an extra random cell from the grid
+    *)
     let mutable neighs = [||]
     let mutable randNbr = -1
     let r = int idx / rowSz
@@ -62,12 +78,13 @@ let getRandomNeighbor2D (idx: int) (isImperfect: bool): int =
     neighs.[rnd.Next() % neighs.Length]
     
 
-    
-
 let getRandomNeighborLine (idx: int): int =
+    
     let mutable randNbr = -1
+    // If the first element in the list, then consider only right neighbor
     if idx = 0 then
         randNbr <- 1
+    // If the last element in the list, consider the element before as neighbor
     elif idx = numNodes-1 then
         randNbr <- numNodes-2
     else
@@ -100,6 +117,20 @@ let getRandomNeighbor (idx:int): int =
 
 // *********** WORKER ACTOR LOGIC **********
 let GossipActor (mailbox: Actor<_>) =
+    (*
+        || GOSSIP algorithm ||
+            For convergance in Gossip algorithm:
+                Expected termination condition -> Stop at a heard count of 10 for any node. Does not guarantee complete distribution of gossip.
+                Implemented termination condition -> Stop when the global min heard count reaches 10. Guarantees complete distribution of gossip.
+        
+        || PUSH-SUM algorithm ||
+            For convergance in Push-sum algorithm:
+                Expected termination condition -> Stop when a node's ratio changes by an amount less than 10^-10 for 3 consecutive times. 
+                                                    Does not guarantee complete distribution of gossip.
+                
+                Implemented termination condition -> Stop when the global count for all the nodes is three for the ratio condition. 
+                                                        Guarantees complete distribution of sum.
+    *)
     let mutable hcount=0
     let mutable s: float = -1.0
     let mutable w: float = 1.0
@@ -109,49 +140,53 @@ let GossipActor (mailbox: Actor<_>) =
     let rec loop() = actor {
         let! msg = mailbox.Receive()
         match msg with
+        // gossip logic
         | WorkerMessage(idx , gossip) ->
             hcount <- hcount+1
-        //    printf "idx: %d heardCount %d minheard %d\n" idx hcount (actorStates |> Array.min)
             actorStates.[idx] <- hcount
-            //*****************Hardstop as per the requirements****************
-            // if hcount < threshold then
-            //*****************Forced hasConverged**************
-            if (actorStates |> Array.min) < threshold then
+
+            (* ****************Hardstop as per the requirements****************
+                if hcount < threshold then
+            ****************Forced hasConverged**************)
+
+            if (actorStates |> Array.min) < gossipThreshold then
                let randNbr = getRandomNeighbor idx
                workersList.[randNbr] <! WorkerMessage(randNbr, "gossip")
             else
                 select "/user/SupervisorActor" system <! WorkerTaskFinished(1)
-                //  printf "Done  Msg %s\n" gossip
+
+        // Push sum logic
         | WorkerMessagePushSum(idx, sIn, wIn) ->
-            if s = -1.0 then
-                s <- float idx
-            s <- s + sIn
-            w <- w + wIn
-            
-            let currentRatio: float = float (s) / float (w)
-            let hasConverged: bool = hasConverged || (currentRatio<1.1 * (float(numNodes)/float(2))) && (currentRatio>0.9 * (float(numNodes)/float(2)))
-            printfn "Current Ratio=%f\n Expected:%f\n" currentRatio (float(numNodes)/float(2))
-            
-            if hasConverged then
-                if hcount < 3 then
-                    diff <- abs(actorStatesPushSum.[idx] - currentRatio)
-                    actorStatesPushSum.[idx] <- currentRatio
-                    if diff < pushSumThreshold then
-                        hcount <- hcount + 1
-                    else
-                    // resetting the count as the consecutive streak is broken now
-                        hcount <- 0
-                    actorStates.[idx] <- hcount
-                    // sending the message to a neighbour
-                    let randNbr = getRandomNeighbor idx
-                    // printfn "idx: %d | heardCount: %d | ratio: %0.12f | diff: %0.12f\n" idx hcount (actorStatesPushSum.[idx]) diff
-                    // printfn "=========================================================================================================="
-                    workersList.[randNbr] <! WorkerMessagePushSum(randNbr, s / float(2), w / float(2))
+            if (actorStates |> Array.min) < pushSumThreshold then
+                // initial setup
+                if s = -1.0 then
+                    s <- float idx
+
+                // update current sum, weight and ratio
+                s <- s + sIn
+                w <- w + wIn
+                let currentRatio: float = float (s) / float (w)
+                diff <- abs(actorStatesPushSum.[idx] - currentRatio)
+                actorStatesPushSum.[idx] <- currentRatio
+                
+                // if ratio does not change by at least pushSumPrecision, increase heard count
+                if diff < pushSumPrecision then
+                    hcount <- hcount + 1
+                else
+                // resetting the count as the consecutive streak is broken now
+                    hcount <- 0
+
+                // update global heard count
+                actorStates.[idx] <- hcount
+
+                // sending the message to a neighbour
+                let randNbr = getRandomNeighbor idx
+                workersList.[randNbr] <! WorkerMessagePushSum(randNbr, s / float(2), w / float(2))
             else
                 // checking the termination condition here
-                printf "Push-sum converged with %f\n"  currentRatio
+                printf "Push-sum converged with %f\n"  (float (s) / float (w))
                 select "/user/SupervisorActor" system <! WorkerTaskFinished(1)
-                //printf "Done  Msg push-sum\n"
+
             
         return! loop()
     }
@@ -160,15 +195,13 @@ let GossipActor (mailbox: Actor<_>) =
 
 // *************** SUPERVISOR ACTOR'S HELPER UTILITY **************
 let supervisorHelper (start:int)= 
+    // spawn all the actors, initialize states
     workersList <- [| for i in 1 .. numNodes -> spawn system (string i) GossipActor |]
-    
-    // for push-sum  add cond
-    // if algo = 'gossip then 
     actorStates <-  Array.zeroCreate numNodes
     actorStatesPushSum <-  Array.zeroCreate numNodes
     
-    // printfn "# of Nodes = %d\nTopology = %s\nAlgorithm = %s" numNodes topology algorithm
     printfn "# of Nodes = %d\n" numNodes
+
     match algorithm with
     | "gossip" ->
         workersList.[start] <! WorkerMessage(start,"gossip")
@@ -180,8 +213,7 @@ let supervisorHelper (start:int)=
 
 // *********** SUPERVISOR ACTOR LOGIC **********
 let SupervisorActor (mailbox: Actor<_>) = 
-    // count keeps track of all the workers that finish their work and ping back to the supervisor
-    // *****************************************
+    // start the timer
     let stopWatch = System.Diagnostics.Stopwatch.StartNew()
 
     let rec loop () = actor {
@@ -190,14 +222,13 @@ let SupervisorActor (mailbox: Actor<_>) =
         // Process main input
         | BossMessage(start) ->
             supervisorHelper start
+        // Algorithm terminated. Print the elapsed time and other outputs
         | WorkerTaskFinished(c) -> 
             stopWatch.Stop()
             printfn "Total run time = %fms" stopWatch.Elapsed.TotalMilliseconds
-            printfn "%A" actorStates
-            if algorithm = "push-sum" then
-                printfn "%A" actorStatesPushSum
-            // printfn "========\nResults:"
-            // printfn "================\n"
+            // printfn "%A" actorStates
+            // if algorithm = "push-sum" then
+            //     printfn "%A" actorStatesPushSum
             
         return! loop ()
     }
