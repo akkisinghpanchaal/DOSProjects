@@ -10,17 +10,56 @@ let rnd = System.Random()
 let mutable numRequests:int = 0
 let mutable numNodes:int = 0
 let mutable numDigits:int = 0
+//   var actorMap:HashMap[String,ActorRef] = HashMap()
+//   var actorHopsMap:HashMap[String,Array[Double]] = HashMap()
+//   var srcdst:HashMap[String,String] = HashMap()
+
+
+
+// case class Initialize(id:String,digits:Int)
+// case class Route(key:String,source:String,hops:Int)
+// case class Join(nodeId:String,currentIndex:Int)
+// case class UpdateRoutingTable(rt:Array[String])
+
+type BossMessage = 
+    | BossMessage of int
+    | WorkerTaskFinished of int
+
+type WorkerMessage = 
+    | Init of string * string
+    | WorkerMessagePushSum of int * float * float
+
+
+let SupervisorActor (mailbox: Actor<_>) = 
+    // count keeps track of all the workers that finish their work and ping back to the supervisor
+    // *****************************************
+    let stopWatch = System.Diagnostics.Stopwatch.StartNew()
+    let rec loop () = actor {
+        let! msg = mailbox.Receive ()
+        return! loop ()
+    }
+    loop ()
+
+let NodeActor (mailbox: Actor<_>) = 
+    // count keeps track of all the workers that finish their work and ping back to the supervisor
+    // *****************************************
+    let stopWatch = System.Diagnostics.Stopwatch.StartNew()
+    let rec loop () = actor {
+        let! msg = mailbox.Receive ()
+        return! loop ()
+    }
+    loop ()
 
 
 let main(args: array<string>) = 
-    let N,R = int(args.[3]),int(args.[4])
-    numDigits <- Math.Log(numNodes|> float,16.00) |> ceil |> int
+    let n,r = int(args.[3]),int(args.[4])
     let mutable errorFlag = false
-    numNodes <-N
-    numRequests <-R
-    let d = Math.Log(numNodes|> float)
+    numNodes <-n
+    numRequests <-r
+    numDigits <- Math.Log(numNodes|> double, 16.) |> ceil |> int
     printf "N:%d\nR:%d\nNumber of digits:%d\n" numNodes numRequests numDigits
-    // let actorRef  = spawn system "SupervisorActor" SupervisorActor
+    printf "Network construction initiated"
+    let actorRef  = spawn system "SupervisorActor" SupervisorActor
     // match algo.ToLower() with
     //     | "gossip" ->
     //         printfn "gossip"
@@ -50,8 +89,8 @@ let main(args: array<string>) =
     //         printfn "ERROR: Topology '%s' not implemented." topology
     //         printfn "Valid topologies are: full, 2D, imp2D, line."
 
-    // if not errorFlag then
-    //     actorRef <! BossMessage 0
+    if not errorFlag then
+        0
 
 main(Environment.GetCommandLineArgs())
 // If not for the below line, the program exits without printing anything.
