@@ -36,6 +36,39 @@ type WorkerMessage =
     | UpdateRoutingTable of Array
 
 
+// HELPER METODS
+// ===============================================================================================
+
+// Converts an hex string to int 
+let hexToDec (hexCode: string) = 
+    let mutable i = 1.0;
+    let mutable decNum = 0.0;
+    let codeLen = hexCode.Length |> float
+    printfn "%f" codeLen
+    for digit in hexCode do
+        let mutable intDigit = 0.0
+        match digit with
+        | 'A' ->
+            intDigit <- 10.0
+        | 'B' ->
+            intDigit <- 11.0
+        | 'C' ->
+            intDigit <- 12.0
+        | 'D' ->
+            intDigit <- 13.0
+        | 'E' ->
+            intDigit <- 14.0
+        | 'F' ->
+            intDigit <- 15.0
+        | _ ->
+            intDigit <- (float(digit) - float('0'))
+        decNum <- decNum + (intDigit * (16.0**(codeLen-i)))
+        i <- i + 1.0
+    decNum |> int
+    
+// ===============================================================================================
+let kkk = "123"
+
 let SupervisorActor (mailbox: Actor<_>) = 
     // count keeps track of all the workers that finish their work and ping back to the supervisor
     // *****************************************
@@ -54,13 +87,14 @@ let NodeActor (mailbox: Actor<_>) =
     let mutable leafSet: Set<string> = Set.empty
     let mutable neighborSet: Set<string> = Set.empty
     let mutable routingTable = Array2D.init numDigits l
+    
     let rec loop () = actor {
         let! msg = mailbox.Receive ()
         match msg with
+            // Initialization phase of a network node
             | Init(passedId) ->
-                // Initialization phase of a network node
                 id <- passedId
-                let number = Convert.ToInt32("15", 16)
+                let number = hexToDec id
                 let mutable left,right=number,number
                 if left=0 then
                     left <- Map.Count(actorMap) -1
@@ -69,7 +103,20 @@ let NodeActor (mailbox: Actor<_>) =
                 for i in [1..8] do
                     leafSet <- leafSet.Add((left-i).ToString())
                     leafSet <- leafSet.Add((right+i).ToString())
-                    
+            
+            // Updates routing table for a new node
+            | Join (nodeId, currentIndex) ->
+
+                let mutable i = 0
+                let newNodeId = nodeId
+                let thisNodeId = id
+                
+                // keep incrementing counter while same characters are encountered in the hex node IDs
+                while thisNodeId.[i] = newNodeId.[i] do
+                    i <- i + 1
+                let sharedPrefixLength = i
+
+
         return! loop ()
     }
     loop ()
