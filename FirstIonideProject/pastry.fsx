@@ -1,18 +1,22 @@
 #r "nuget: Akka.FSharp" 
-#r "nuget: Akka.TestKit" 
+#r "nuget: Akka.TestKit"
 
 open System
 open Akka.Actor
 open Akka.FSharp
+
+// ASSUMPTIONS
+let b: int = 4
+let l: int = 2.0**float(b) |> int
 
 let system = ActorSystem.Create("FSharp")
 let rnd = System.Random()
 let mutable numRequests:int = 0
 let mutable numNodes:int = 0
 let mutable numDigits:int = 0
-//   var actorMap:HashMap[String,ActorRef] = HashMap()
-//   var actorHopsMap:HashMap[String,Array[Double]] = HashMap()
-//   var srcdst:HashMap[String,String] = HashMap()
+let actorMap:Map<String,IActorRef> = Map.empty
+let actorHopsMap:Map<String,Array> = Map.empty
+let srcdst:Map<String,String> = Map.empty
 
 
 
@@ -26,8 +30,10 @@ type BossMessage =
     | WorkerTaskFinished of int
 
 type WorkerMessage = 
-    | Init of string * string
-    | WorkerMessagePushSum of int * float * float
+    | Init of string
+    | Join of string * int
+    | Route of string * string * int
+    | UpdateRoutingTable of Array
 
 
 let SupervisorActor (mailbox: Actor<_>) = 
@@ -43,9 +49,27 @@ let SupervisorActor (mailbox: Actor<_>) =
 let NodeActor (mailbox: Actor<_>) = 
     // count keeps track of all the workers that finish their work and ping back to the supervisor
     // *****************************************
-    let stopWatch = System.Diagnostics.Stopwatch.StartNew()
+    let mutable id: string = ""
+    let cols = l
+    let mutable leafSet: Set<string> = Set.empty
+    let mutable neighborSet: Set<string> = Set.empty
+    let mutable routingTable = Array2D.init numDigits l
     let rec loop () = actor {
         let! msg = mailbox.Receive ()
+        match msg with
+            | Init(passedId) ->
+                // Initialization phase of a network node
+                id <- passedId
+                let number = Convert.ToInt32("15", 16)
+                let mutable left,right=number,number
+                if left=0 then
+                    left <- Map.Count(actorMap) -1
+                if right=0 then
+                    right <- actorMap.Count -1
+                for i in [1..8] do
+                    leafSet <- leafSet.Add((left-i).ToString())
+                    leafSet <- leafSet.Add((right+i).ToString())
+                    
         return! loop ()
     }
     loop ()
@@ -89,8 +113,8 @@ let main(args: array<string>) =
     //         printfn "ERROR: Topology '%s' not implemented." topology
     //         printfn "Valid topologies are: full, 2D, imp2D, line."
 
-    if not errorFlag then
-        0
+    // if not errorFlag then
+    printfn "bye"
 
 main(Environment.GetCommandLineArgs())
 // If not for the below line, the program exits without printing anything.
