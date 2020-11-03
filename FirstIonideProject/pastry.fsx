@@ -17,10 +17,6 @@ let mutable numDigits:int = 0
 let mutable actorMap = Map.empty
 let mutable actorHopsMap: Map<string, double[]> = Map.empty
 let mutable srcdst:Map<String,String> = Map.empty
-// case class Initialize(id:String,digits:Int)
-// case class Route(key:String,source:String,hops:Int)
-// case class Join(nodeId:String,currentIndex:Int)
-// case class UpdateRoutingTable(rt:Array[String])
 
 type BossMessage = 
     | BossMessage of int
@@ -71,7 +67,7 @@ let NodeActor (mailbox: Actor<_>) =
                 for i in [1..8] do
                     leafSet <- leafSet.Add((left-i).ToString("X"))
                     leafSet <- leafSet.Add((right+i).ToString("X"))
-                printf "Leaf set %A \n" leafSet
+                printf "Leaf %A \n" leafSet
             // Updates routing table for a new node
             | Join (nodeId, currentIndex) ->
                 let mutable i = 0
@@ -82,13 +78,12 @@ let NodeActor (mailbox: Actor<_>) =
                 let sharedPrefixLength = i
                 let mutable routingRow = Array.zeroCreate l
                 while k<=sharedPrefixLength do
-                    // Array2D.blit routingTable.[k,*] 0 routingRow 0 16
                     let mutable routingRow: string[] = Array.init l (fun x -> routingTable.[k,x])
-                    routingRow.[Convert.ToInt32(string(id.[sharedPrefixLength]),16)] <- id
+                    routingRow.[Convert.ToInt32(string(id.[sharedPrefixLength]),l)] <- id
                     actorMap.[nodeId] <! UpdateRoutingTable(routingRow)
                     k <- k + 1
                 let rtrow = sharedPrefixLength
-                let rtcol = Convert.ToInt32(string(nodeId.[sharedPrefixLength]),16)
+                let rtcol = Convert.ToInt32(string(nodeId.[sharedPrefixLength]),l)
                 if isNull routingTable.[rtrow,rtcol] then
                     routingTable.[rtrow,rtcol] <- nodeId
                 else
@@ -116,7 +111,7 @@ let NodeActor (mailbox: Actor<_>) =
                     let sharedPrefixLength = i
                     let check = 0
                     let rtrow = sharedPrefixLength
-                    let mutable rtcol = Convert.ToInt32(string(key.[sharedPrefixLength]), 16)
+                    let mutable rtcol = Convert.ToInt32(string(key.[sharedPrefixLength]), l)
                     if isNull routingTable.[rtrow, rtcol] then
                         rtcol <- 0
                     actorMap.[routingTable.[rtrow,rtcol]] <! Route(key, source, hops+1.0)
@@ -134,6 +129,11 @@ let NodeActor (mailbox: Actor<_>) =
     }
     loop ()
 
+let Keys(map: Map<'K,'V>) =
+    seq {
+        for KeyValue(key,value) in map do
+            yield key
+    } |> List.ofSeq
 
 let main(args: array<string>) = 
     let n,r = int(args.[3]),int(args.[4])
@@ -169,14 +169,30 @@ let main(args: array<string>) =
         actorMap.[String.replicate numDigits "0"] <! Join(nodeId,0)
         System.Threading.Thread.Sleep(100)
     
-    for i in [0..numNodes-1] do
-        hexNum <- i.ToString("X")
-        len <- hexNum.Length
-        nodeId <- String.concat  "" [String.replicate (numDigits-len) "0"; hexNum]
-        printfn "Ye table %s ka hai" (i.ToString("X"))
-        actorMap.[nodeId] <! ShowTable
-        System.Threading.Thread.Sleep(100)
+    if false then
+        for i in [0..numNodes-1] do
+            hexNum <- i.ToString("X")
+            len <- hexNum.Length
+            nodeId <- String.concat  "" [String.replicate (numDigits-len) "0"; hexNum]
+            printfn "Ye table %s ka hai" (i.ToString("X"))
+            actorMap.[nodeId] <! ShowTable
+            System.Threading.Thread.Sleep(100)
 
+    printf "\nNetwork is built!!!\n"
+    let actorsArray = Keys(actorMap)
+    // for (KeyValue(k, v)) in actorMap ->
+
+    // printf  "ActorMap Keys :%s \n" Map.iter actorMap.[]
+    printf  "ActorMap Keys :%A\nlength : %d\n" actorsArray actorsArray.Length
+    printf  "ActorMap Keys :%s \n" actorsArray.[numNodes-1]
+    let mutable src,dst= null, null
+    for i in 0..numRequests-1 do
+        src <- actorsArray.[i%actorsArray.Length] 
+        dst <- actorsArray.[rnd.Next()%actorsArray.Length]
+        while dst = src do
+            dst <- actorsArray.[rnd.Next()%actorsArray.Length]
+        actorMap.[src] <! Route(dst,src,0.0)
+        printf "Rand src:%s dst:%s\n" src dst
     if not errorFlag then
         actorRef <! BossMessage 0
     
