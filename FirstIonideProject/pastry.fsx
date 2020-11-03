@@ -14,12 +14,9 @@ let rnd = System.Random()
 let mutable numRequests:int = 0
 let mutable numNodes:int = 0
 let mutable numDigits:int = 0
-let actorMap:Map<String,IActorRef> = Map.empty
-let actorHopsMap:Map<String,Array> = Map.empty
-let srcdst:Map<String,String> = Map.empty
-
-
-
+let mutable actorMap = Map.empty
+// let mutable actorHopsMap = Map.empty
+let mutable srcdst:Map<String,String> = Map.empty
 // case class Initialize(id:String,digits:Int)
 // case class Route(key:String,source:String,hops:Int)
 // case class Join(nodeId:String,currentIndex:Int)
@@ -33,41 +30,8 @@ type WorkerMessage =
     | Init of string
     | Join of string * int
     | Route of string * string * int
-    | UpdateRoutingTable of Array
+    // | UpdateRoutingTable of Array
 
-
-// HELPER METODS
-// ===============================================================================================
-
-// Converts an hex string to int 
-let hexToDec (hexCode: string) = 
-    let mutable i = 1.0;
-    let mutable decNum = 0.0;
-    let codeLen = hexCode.Length |> float
-    printfn "%f" codeLen
-    for digit in hexCode do
-        let mutable intDigit = 0.0
-        match digit with
-        | 'A' ->
-            intDigit <- 10.0
-        | 'B' ->
-            intDigit <- 11.0
-        | 'C' ->
-            intDigit <- 12.0
-        | 'D' ->
-            intDigit <- 13.0
-        | 'E' ->
-            intDigit <- 14.0
-        | 'F' ->
-            intDigit <- 15.0
-        | _ ->
-            intDigit <- (float(digit) - float('0'))
-        decNum <- decNum + (intDigit * (16.0**(codeLen-i)))
-        i <- i + 1.0
-    decNum |> int
-    
-// ===============================================================================================
-let kkk = "123"
 
 let SupervisorActor (mailbox: Actor<_>) = 
     // count keeps track of all the workers that finish their work and ping back to the supervisor
@@ -87,36 +51,48 @@ let NodeActor (mailbox: Actor<_>) =
     let mutable leafSet: Set<string> = Set.empty
     let mutable neighborSet: Set<string> = Set.empty
     let mutable routingTable = Array2D.init numDigits l
-    
+    let mutable temp = 0
     let rec loop () = actor {
         let! msg = mailbox.Receive ()
         match msg with
             // Initialization phase of a network node
             | Init(passedId) ->
                 id <- passedId
-                let number = hexToDec id
+                let number = Convert.ToInt32(id, 16)
                 let mutable left,right=number,number
                 if left=0 then
-                    left <- Map.Count(actorMap) -1
+                    temp <- actorMap.Count
+                    left <- temp-1
                 if right=0 then
-                    right <- actorMap.Count -1
+                    temp <- actorMap.Count
+                    right <- temp-1
                 for i in [1..8] do
                     leafSet <- leafSet.Add((left-i).ToString())
                     leafSet <- leafSet.Add((right+i).ToString())
-            
+                printf "Leaf set %A \n" leafSet
             // Updates routing table for a new node
             | Join (nodeId, currentIndex) ->
-
                 let mutable i = 0
-                let newNodeId = nodeId
-                let thisNodeId = id
-                
+                let mutable k =currentIndex
                 // keep incrementing counter while same characters are encountered in the hex node IDs
-                while thisNodeId.[i] = newNodeId.[i] do
+                while nodeId.[i] = id.[i] do
                     i <- i + 1
                 let sharedPrefixLength = i
-
-
+                let mutable routingRow=[||]
+                while k<=sharedPrefixLength do
+                    Array2D.blit routingTable  k 0 routingRow 0 targetIndex2 16 length2
+                    routingRow <- routingTable[k]
+                    routingRow.[Convert.ToInt32(id[sharedPrefixLength]16)] = id
+                    // actorMap[key] <! UpdateRoutingTable(routingRow)
+                    k+=1
+                let rtrow = sharedPrefixLength
+                let rtcol = Integer.parseInt(key(sharedPrefixLength).toString,16)
+                if routingTable(rtrow)(rtcol)==null then
+                    routingTable(rtrow)(rtcol) = key
+                else
+                    actorMap[routingTable[rtrow][rtcol]] <! Join(key,k)
+            |_ ->
+                printfn "Error!\ns"
         return! loop ()
     }
     loop ()
@@ -131,37 +107,32 @@ let main(args: array<string>) =
     printf "N:%d\nR:%d\nNumber of digits:%d\n" numNodes numRequests numDigits
     printf "Network construction initiated"
     let actorRef  = spawn system "SupervisorActor" SupervisorActor
-    // match algo.ToLower() with
-    //     | "gossip" ->
-    //         printfn "gossip"
-    //     | "push-sum" ->
-    //         printfn "push-sum"
-    //     | _ ->
-    //         errorFlag <- true
-    //         printfn "ERROR: Algorithm not present"
-
-    // match topology.ToLower() with
-    //     | "full" -> 
-    //         printfn "full"
-    //     | "2d" -> 
-    //         printfn "2D" 
-    //         rowSz <- numNodes |> float |> sqrt |> ceil |> int 
-    //         numNodes <- (rowSz * rowSz)
-    //         printfn "# of Nodes rounded up to:%d" numNodes
-    //     | "line" -> 
-    //         printfn "line"
-    //     | "imp2d" -> 
-    //         rowSz <- numNodes |> float |> sqrt |> ceil |> int 
-    //         numNodes <- (rowSz * rowSz)
-    //         printfn "# of Nodes rounded up to:%d" numNodes
-    //         printfn "imp2D"
-    //     | _ -> 
-    //         errorFlag <- true
-    //         printfn "ERROR: Topology '%s' not implemented." topology
-    //         printfn "Valid topologies are: full, 2D, imp2D, line."
-
-    // if not errorFlag then
-    printfn "bye"
+    let mutable nodeId:string=String.replicate numDigits "0"
+    let mutable hexNum:string=""
+    let mutable len = 0
+    printf "Node Id: %s\n" nodeId
+    let mutable actor = spawn system nodeId NodeActor
+    actor <! Init nodeId
+    actorMap <- actorMap.Add(nodeId,actor)
+    for i in 1 .. numNodes-1 do
+        printf "\nNode creating %s\n" nodeId
+        // if i = 4 then
+        //     printf "25% of network constructed"
+        // elif i= numNodes/2 then
+        //     printf "50% of network constructed"
+        // elif i=numNodes*3/4 then
+        //     printf "75% of network constructed"
+        hexNum <- i.ToString("X")
+        len <- hexNum.Length
+        printf "%s numDigits-len %d\n" hexNum (numDigits-len)
+        nodeId <- String.concat  "" [String.replicate (numDigits-len) "0"; hexNum]
+        actor <- spawn system (string nodeId) NodeActor
+        actor <! Init(nodeId)
+        actorMap <- actorMap.Add(nodeId,actor)
+        actorMap.[String.replicate numDigits "0"] <! Join(nodeId,0)
+        System.Threading.Thread.Sleep(3000)
+    if not errorFlag then
+        actorRef <! BossMessage 0
 
 main(Environment.GetCommandLineArgs())
 // If not for the below line, the program exits without printing anything.
