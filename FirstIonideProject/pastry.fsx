@@ -59,7 +59,7 @@ let NodeActor (mailbox: Actor<_>) =
     let mutable neighborSet: Set<string> = Set.empty
     let mutable routingTable: string[,] = Array2D.zeroCreate numDigits l
     let mutable currentRow = 0
-    let mutable temp = 0
+    let mutable s = null
     let rec loop () = actor {
         let! msg = mailbox.Receive ()
         match msg with
@@ -68,14 +68,19 @@ let NodeActor (mailbox: Actor<_>) =
                 id <- passedId
                 let number = Convert.ToInt32(id, l)
                 for i in [1..l/2] do
-                    if number-i<0 then 
-                        leafSet <- leafSet.Add((numNodes-i).ToString("X"))
+                    if number-i<0 then
+                        s <- (numNodes-i).ToString("X")
                     else
-                        leafSet <- leafSet.Add((number-i).ToString("X"))
+                        s <- (number-i).ToString("X")
+                    s <- String.concat  "" [String.replicate (numDigits-s.Length) "0"; s]
+                    leafSet <- leafSet.Add((s))
                     if number+i>=numNodes then 
-                        leafSet <- leafSet.Add((number+i-numNodes).ToString("X"))
+                        s <- (number-i-numNodes).ToString("X")
                     else
-                        leafSet <- leafSet.Add((number+i).ToString("X"))
+                        s <- (number+i).ToString("X")
+                    if numDigits>s.Length then
+                        s <- String.concat  "" [String.replicate (numDigits-s.Length) "0"; s]
+                    leafSet <- leafSet.Add((s))
 
             // Updates routing table for a new node
             | Join (nodeId, currentIndex) ->
@@ -103,11 +108,13 @@ let NodeActor (mailbox: Actor<_>) =
                 currentRow <- currentRow + 1
             // Routes a message with destination as key from source where hops is the hops traced so far
             | Route(key, source, hops) ->
-                printer <! ShowStr(sprintf "ThisNodeID: %s\n%s -> %s\n" id source key)
-                printer <! ShowStr(sprintf "%A\n" routingTable)
+                printer <! ShowStr(sprintf "At : %s\n%s -> %s\n" id source key)
+                printer <! ShowStr(sprintf "Routing Table %A\n" routingTable)
+                printer <! ShowStr(sprintf "Leaf Set %A" leafSet)
+                printer <! ShowStr(sprintf "--------------------------------")
                 if key = id then
+                    printer <! ShowStr(sprintf "--------------REACHED-----------!!!\n #ofHops: %A\n" hops)
                     if actorHopsMap.ContainsKey source then
-                        printer <! ShowStr(sprintf "REACHED!! YIPEE;  Hops %A\n" hops)
                         let total, avgHops = actorHopsMap.[source].[1], actorHopsMap.[source].[0]
                         actorHopsMap.[source].[0] <- ((avgHops*total)+hops)/(total+1.0)
                         actorHopsMap.[source].[1] <- total + 1.0
@@ -117,43 +124,43 @@ let NodeActor (mailbox: Actor<_>) =
                         actorHopsMap <- actorHopsMap.Add (source, tempArr)
                         printer <! ShowStr(sprintf "actors Hop map No ERR")
                 elif leafSet.Contains key then
-                    printer <! ShowStr(sprintf "Second If Case HERE\n")
+                    printer <! ShowStr(sprintf "Second Case!!\n")
                     actorMap.[key] <! Route(key, source, hops + 1.0)
                 else
-                    printer <! ShowStr(sprintf "Third If Case HERE \n")
-                
+                    printer <! ShowStr(sprintf "Third Case!!")
                     let mutable i = 0
                     while key.[i] = id.[i] do
                         i <- i + 1
                     let sharedPrefixLength = i
                     let check = 0
                     let rtrow = sharedPrefixLength
-                    printer <! ShowStr(sprintf "NumberOfDigit: %d\n Shared Prefix Len : %d \n" numDigits sharedPrefixLength)
+                    printer <! ShowStr(sprintf "NumberOfDigit: %d\nShared Prefix Len : %d" numDigits sharedPrefixLength)
                     let mutable rtcol = Convert.ToInt32(string(key.[sharedPrefixLength]), l)
                     printer <! ShowStr(sprintf "row: %d | col: %d | routingTable.[rtrow,rtcol]: %s" rtrow rtcol routingTable.[rtrow,rtcol])
                     if not (isNull routingTable.[rtrow, rtcol]) then
-                        printer <! ShowStr(sprintf "Special Case HERE for rtrow rtcol\n")
+                        printer <! ShowStr(sprintf "----------------NEXT----------------")
                         actorMap.[routingTable.[rtrow,rtcol]] <! Route(key, source, hops+1.0)
                     else
-                        printer <! ShowStr(sprintf "Special Case HERE inside else for next node\n")
+                        printer <! ShowStr(sprintf "Finding Min Dist node\n")
                         let mutable dist = 0
                         let mutable distMin = 2147483647
                         let mutable nextNodeId = ""
                         let mutable shl = 0
 
                         for candidateNode in leafSet do
-                            printer <! ShowStr(sprintf "sab thik 1")
+                            // printer <! ShowStr(sprintf "sab thik 1")
                             while candidateNode.[shl] = id.[shl] do 
                                 shl <- shl + 1
-                            printer <! ShowStr(sprintf "sab thik 2")
+                            // printer <! ShowStr(sprintf "sab thik 2")
                             if shl >= sharedPrefixLength then
-                                dist <- (Convert.ToInt32(candidateNode, l) -  Convert.ToInt32(id, l))
+                                dist <- abs (Convert.ToInt32(candidateNode, l) -  Convert.ToInt32(id, l))
                                 if dist < distMin then
                                     nextNodeId <- candidateNode
                             shl <- 0
                         printer <! ShowStr(sprintf "nextNodeId: %s" nextNodeId)
+                        printer <! ShowStr(sprintf "----------------NEXT----------------")
                         actorMap.[nextNodeId] <! Route(key, source, hops + 1.0)
-                        printer <! ShowStr(sprintf "Special Case HERE for next Node id\n")
+                
 
             | ShowTable ->
                 printer <! ShowLeaf(id,leafSet)
@@ -217,35 +224,27 @@ let main(args: array<string>) =
             hexNum <- i.ToString("X")
             len <- hexNum.Length
             nodeId <- String.concat  "" [String.replicate (numDigits-len) "0"; hexNum]
-            // printfn "Ye table %s ka hai" (i.ToString("X"))
             actorMap.[nodeId] <! ShowTable
             System.Threading.Thread.Sleep(100)
 
     printf "\nNetwork is built!!!\n"
     let actorsArray = Keys(actorMap)
-    // for (KeyValue(k, v)) in actorMap ->
 
-    // printf  "ActorMap Keys :%s \n" Map.iter actorMap.[]
     printf  "ActorMap Keys :%A\nlength : %d\n" actorsArray actorsArray.Length
     printf  "ActorMap Keys :%s \n" actorsArray.[numNodes-1]
     let mutable src,dst= null, null
 
-    printfn "Waiting for 10 seconds...."
+    printfn "Waiting for 5 seconds....\n\n\n\n"
     System.Threading.Thread.Sleep(5000)
-    
-    // for actmapping in actorMap do
-    //     printfn "%s | %A" actmapping.Key actmapping.Value
-
-    // System.Threading.Thread.Sleep(10000)
 
     for i in 0..numRequests-1 do
         src <- actorsArray.[i%actorsArray.Length] 
         dst <- actorsArray.[rnd.Next()%actorsArray.Length]
         while dst = src do
             dst <- actorsArray.[rnd.Next()%actorsArray.Length]
-        actorMap.[src] <! Route(dst,src,0.0)
-        System.Threading.Thread.Sleep(300)
         printf "Rand src:%s dst:%s\n" src dst
+        actorMap.[src] <! Route(dst,src,0.0)
+        System.Threading.Thread.Sleep(3000)
     
 main(Environment.GetCommandLineArgs())
 // If not for the below line, the program exits without printing anything.
