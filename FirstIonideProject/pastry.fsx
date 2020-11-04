@@ -67,7 +67,7 @@ let NodeActor (mailbox: Actor<_>) =
                 for i in [1..8] do
                     leafSet <- leafSet.Add((left-i).ToString("X"))
                     leafSet <- leafSet.Add((right+i).ToString("X"))
-                printf "Leaf %A \n" leafSet
+                // printf "Leaf %A \n" leafSet
             // Updates routing table for a new node
             | Join (nodeId, currentIndex) ->
                 let mutable i = 0
@@ -96,25 +96,32 @@ let NodeActor (mailbox: Actor<_>) =
             | Route(key, source, hops) ->
                 if key = id then
                     if actorMap.ContainsKey source then
+                        printf "REACHED!! YIPEE;  Hops %A\n" hops
                         let total, avgHops = actorHopsMap.[source].[1], actorHopsMap.[source].[0]
                         actorHopsMap.[source].[0] <- ((avgHops*total)+hops)/(total+1.0)
                         actorHopsMap.[source].[1] <- total + 1.0
                     else
+                        printf "Special Case HERE\n"
                         let mutable tempArr = [|hops;1.0|]
                         actorHopsMap <- actorHopsMap.Add (source, tempArr)
                 elif leafSet.Contains key then
+                    printf "Second If Case HERE\n"
                     actorMap.[key] <! Route(key, source, hops + 1.0)
                 else
+                    printf "Third If Case HERE \n"
+                
                     let mutable i = 0
                     while key.[i] = id.[i] do
                         i <- i + 1
                     let sharedPrefixLength = i
                     let check = 0
                     let rtrow = sharedPrefixLength
+                    printf "NumberOfDigit: %d\n Shared Prefix Len : %d \n" numDigits sharedPrefixLength
                     let mutable rtcol = Convert.ToInt32(string(key.[sharedPrefixLength]), l)
-                    if isNull routingTable.[rtrow, rtcol] then
-                        rtcol <- 0
-                    actorMap.[routingTable.[rtrow,rtcol]] <! Route(key, source, hops+1.0)
+                    if rtrow<numDigits && rtcol<l then
+                        if isNull routingTable.[rtrow, rtcol] then
+                            rtcol <- 0
+                        actorMap.[routingTable.[rtrow,rtcol]] <! Route(key, source, hops+1.0)
             | ShowTable ->
                 printfn "Agaya"
                 for i = 0 to numDigits-1 do
@@ -169,7 +176,7 @@ let main(args: array<string>) =
         actorMap.[String.replicate numDigits "0"] <! Join(nodeId,0)
         System.Threading.Thread.Sleep(100)
     
-    if false then
+    if true then
         for i in [0..numNodes-1] do
             hexNum <- i.ToString("X")
             len <- hexNum.Length
@@ -192,6 +199,7 @@ let main(args: array<string>) =
         while dst = src do
             dst <- actorsArray.[rnd.Next()%actorsArray.Length]
         actorMap.[src] <! Route(dst,src,0.0)
+        System.Threading.Thread.Sleep(300)
         printf "Rand src:%s dst:%s\n" src dst
     if not errorFlag then
         actorRef <! BossMessage 0
