@@ -54,6 +54,8 @@ let mutable printer = spawn system "PrinterActor" PrinterActor
 let display msg = 
     printer <! ShowStr(msg)
 
+let hex2int code = Convert.ToInt32(code, l)
+
 let NodeActor (mailbox: Actor<_>) = 
     // count keeps track of all the workers that finish their work and ping back to the supervisor
     // *****************************************
@@ -112,7 +114,7 @@ let NodeActor (mailbox: Actor<_>) =
                 currentRow <- currentRow + 1
             // Routes a message with destination as key from source where hops is the hops traced so far
             | Route(key, source, hops) ->
-                display (sprintf "%s -> %s\nAt : %s\n" id source key)
+                display (sprintf "%s -> %s\nAt : %s\n" source key id)
                 // printer <! ShowStr(sprintf "Routing Table %A\n" routingTable)
                 // printer <! ShowStr(sprintf "Leaf Set %A" leafSet)
                 // printer <! ShowStr(sprintf "--------------------------------")
@@ -123,61 +125,86 @@ let NodeActor (mailbox: Actor<_>) =
                         actorHopsMap.[source].[0] <- ((avgHops*total)+hops)/(total+1.0)
                         actorHopsMap.[source].[1] <- total + 1.0
                     else
-                        // printf "actorsHop dsnt have the key\n"
                         let mutable tempArr = [|hops;1.0|]
                         actorHopsMap <- actorHopsMap.Add (source, tempArr)
-                        // printer <! ShowStr(sprintf "actors Hop map No ERR")
                 elif leafSet.Contains key then
-                    // printer <! ShowStr(sprintf "Second Case!!\n")
+                    display "The key is found inside the leafset..."
                     actorMap.[key] <! Route(key, source, hops + 1.0)
+                elif (hex2int(key) > hex2int(leafSet.MinimumElement)) && (hex2int(key) < hex2int(leafSet.MaximumElement)) then
+                    display "The key is in the range of the leaf set..."
+                    // If the destination key is in the range of the leafset, then
+                    //  forward it to the nearest possible node in the leafset
+                    
+                    let mutable dist = 0
+                    let mutable distMin = 2147483647
+                    let mutable nextNodeId = ""
+                    for candidateNode in leafSet do
+                        dist <- abs (hex2int(candidateNode) -  hex2int(key))
+                        if dist < distMin then
+                            distMin <- dist
+                            nextNodeId <- candidateNode
+                    display (sprintf "Forwarding the message to %s..." nextNodeId)
+                    actorMap.[nextNodeId] <! Route(key, source, hops + 1.0)
                 else
-                    // printer <! ShowStr(sprintf "Third Case!!")
+                    display "The key was not in the leaf set range. Finding next hop in the routing table..."
                     let mutable i = 0
                     while key.[i] = id.[i] do
                         i <- i + 1
                     let sharedPrefixLength = i
                     let check = 0
                     let rtrow = sharedPrefixLength
-                    // printer <! ShowStr(sprintf "NumberOfDigit: %d\nShared Prefix Len : %d" numDigits sharedPrefixLength)
                     display (sprintf "Shared Prefix Len : %d" sharedPrefixLength)
                     let mutable rtcol = Convert.ToInt32(string(key.[sharedPrefixLength]), l)
-                    // printer <! ShowStr(sprintf "row: %d | col: %d | routingTable.[rtrow,rtcol]: %s" rtrow rtcol routingTable.[rtrow,rtcol])
                     if not (isNull routingTable.[rtrow, rtcol]) then
-                        // printer <! ShowStr(sprintf "----------------NEXT----------------")
+                        display (sprintf "Next hop found in the routing table. Forwarding to %s" routingTable.[rtrow,rtcol])
                         actorMap.[routingTable.[rtrow,rtcol]] <! Route(key, source, hops+1.0)
                     else
-                        // printer <! ShowStr(sprintf "Finding Min Dist node\n")
+                        display "Routing table entry is null. Entered the rare case..."
+                        display "Determining the next node from either the leafset or routing table or neighborhood..."
                         let mutable dist = 0
                         let mutable distMin = 2147483647
-                        let mutable nextNodeId = ""
+                        let mutable nextNodeId: string = ""
                         let mutable shl = 0
 
+                        // Distance between the current node and the destination node
+                        let distCurrToDest = abs(hex2int(id) - hex2int(key))
+                        
                         for candidateNode in leafSet do
-                            // printer <! ShowStr(sprintf "sab thik 1")
                             while candidateNode.[shl] = id.[shl] do 
                                 shl <- shl + 1
-                            // printer <! ShowStr(sprintf "sab thik 2")
                             if shl >= sharedPrefixLength then
-                                dist <- abs (Convert.ToInt32(candidateNode, l) -  Convert.ToInt32(id, l))
-                                if dist < distMin then
-                                    distMin <- dist
+                                dist <- abs (hex2int(candidateNode) -  hex2int(id))
+                                if dist < distCurrToDest then
                                     nextNodeId <- candidateNode
                             shl <- 0
-                        // Now check in the routing table
-                        for r in 0..numDigits-1 do
-                            for c in 0..l-1 do
-                                if not (isNull routingTable.[r,c]) then
-                                    let mutable candidateNode = routingTable.[r,c]
-                                    while candidateNode.[shl] = id.[shl] do
-                                        shl <- shl + 1
-                                    if shl >= sharedPrefixLength then
-                                        dist <- abs(Convert.ToInt32(candidateNode, l) -  Convert.ToInt32(id, l))
-                                        if dist < distMin then
-                                            distMin <- dist
-                                            nextNodeId <- candidateNode
-                                    shl <- 0
-                        printer <! ShowStr(sprintf "nextNodeId: %s" nextNodeId)
-                        printer <! ShowStr(sprintf "----------------NEXT----------------")
+
+                        // Now check in the routing table only if no next node was determined in the leaf set
+                        if nextNodeId = "" then
+                            let mutable r = 0
+                            let mutable c = 0
+                            let mutable breakTheLoop = false
+
+                            while not breakTheLoop && (r < numDigits) do
+                                while not breakTheLoop && (c < l) do
+                                    if not (isNull routingTable.[r,c]) then
+                                        let mutable candidateNode = routingTable.[r,c]
+                                        // get the shared prefix length
+                                        while candidateNode.[shl] = id.[shl] do
+                                            shl <- shl + 1
+                                        // Proceed only if the shared prefix length is as long as with the current node
+                                        if shl >= sharedPrefixLength then
+                                            // Distance between the candidate node and the destination.
+                                            // The candidate key can either be from the leafset of the routing table.
+                                            dist <- abs(hex2int(candidateNode) - hex2int(key))
+                                            // If the distance is less than the distance between current node and the destination,
+                                            // then forward the message to this candidate node
+                                            if dist < distCurrToDest then
+                                                nextNodeId <- candidateNode
+                                                breakTheLoop <- true
+                                        shl <- 0
+                                    c <- c + 1
+                                r <- r + 1
+                        display (sprintf "Forwarding to the next node: %s" nextNodeId)
                         actorMap.[nextNodeId] <! Route(key, source, hops + 1.0)
                 
 
@@ -249,7 +276,7 @@ let main(args: array<string>) =
             hexNum <- i.ToString("X")
             len <- hexNum.Length
             nodeId <- String.concat  "" [String.replicate (numDigits-len) "0"; hexNum]
-            // actorMap.[nodeId] <! ShowTable
+            actorMap.[nodeId] <! ShowTable
             System.Threading.Thread.Sleep(100)
 
     printf "\nNetwork is built!!!\n"
