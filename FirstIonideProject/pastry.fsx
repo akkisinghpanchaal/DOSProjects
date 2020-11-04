@@ -58,16 +58,19 @@ let NodeActor (mailbox: Actor<_>) =
                 id <- passedId
                 let number = Convert.ToInt32(id, 16)
                 let mutable left,right=number,number
-                if left=0 then
-                    temp <- actorMap.Count
-                    left <- temp-1
+                if left < l then
+                    left <- l
                 if right=0 then
-                    temp <- actorMap.Count
+                    temp <- numNodes
                     right <- temp-1
                 for i in [1..8] do
                     leafSet <- leafSet.Add((left-i).ToString("X"))
                     leafSet <- leafSet.Add((right+i).ToString("X"))
-                // printf "Leaf %A \n" leafSet
+                
+                printf "Leaf: "
+                for e in leafSet do
+                    printf "%s " e
+                printfn ""    
             // Updates routing table for a new node
             | Join (nodeId, currentIndex) ->
                 let mutable i = 0
@@ -118,10 +121,25 @@ let NodeActor (mailbox: Actor<_>) =
                     let rtrow = sharedPrefixLength
                     printf "NumberOfDigit: %d\n Shared Prefix Len : %d \n" numDigits sharedPrefixLength
                     let mutable rtcol = Convert.ToInt32(string(key.[sharedPrefixLength]), l)
-                    if rtrow<numDigits && rtcol<l then
-                        if isNull routingTable.[rtrow, rtcol] then
-                            rtcol <- 0
+                    
+                    if not (isNull routingTable.[rtrow, rtcol]) then
                         actorMap.[routingTable.[rtrow,rtcol]] <! Route(key, source, hops+1.0)
+                    else
+                        let mutable dist = 0
+                        let mutable distMin = 2147483647
+                        let mutable nextNodeId = ""
+                        let mutable shl = 0
+
+                        for candidateNode in leafSet do
+                            while candidateNode.[shl] = id.[shl] do 
+                                shl <- shl + 1
+                            if shl >= sharedPrefixLength then
+                                dist <- (Convert.ToInt32(candidateNode, l) -  Convert.ToInt32(id, l))
+                                if dist < distMin then
+                                    nextNodeId <- candidateNode
+                            shl = 0
+                        printfn "nextNodeId: %s" nextNodeId    
+                        actorMap.[nextNodeId] <! Route(key, source, hops + 1.0)
             | ShowTable ->
                 printfn "Agaya"
                 for i = 0 to numDigits-1 do
