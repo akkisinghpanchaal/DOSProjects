@@ -28,17 +28,8 @@ type WorkerMessage =
     | Route of string * string * double
     | UpdateRoutingTable of string[]
     | ShowTable
+    | Show of Set<string>
 
-
-let SupervisorActor (mailbox: Actor<_>) = 
-    // count keeps track of all the workers that finish their work and ping back to the supervisor
-    // *****************************************
-    let stopWatch = System.Diagnostics.Stopwatch.StartNew()
-    let rec loop () = actor {
-        let! msg = mailbox.Receive ()
-        return! loop ()
-    }
-    loop ()
 
 let NodeActor (mailbox: Actor<_>) = 
     // count keeps track of all the workers that finish their work and ping back to the supervisor
@@ -56,21 +47,17 @@ let NodeActor (mailbox: Actor<_>) =
             // Initialization phase of a network node
             | Init(passedId) ->
                 id <- passedId
-                let number = Convert.ToInt32(id, 16)
-                let mutable left,right=number,number
-                if left < l then
-                    left <- l
-                if right=0 then
-                    temp <- numNodes
-                    right <- temp-1
-                for i in [1..8] do
-                    leafSet <- leafSet.Add((left-i).ToString("X"))
-                    leafSet <- leafSet.Add((right+i).ToString("X"))
-                
-                printf "Leaf: "
-                for e in leafSet do
-                    printf "%s " e
-                printfn ""    
+                let number = Convert.ToInt32(id, l)
+                for i in [1..l/2] do
+                    if number-i<0 then 
+                        leafSet <- leafSet.Add((numNodes-i).ToString("X"))
+                    else
+                        leafSet <- leafSet.Add((number-i).ToString("X"))
+                    if number+i>=numNodes then 
+                        leafSet <- leafSet.Add((number+i-numNodes).ToString("X"))
+                    else
+                        leafSet <- leafSet.Add((number-i).ToString("X"))
+
             // Updates routing table for a new node
             | Join (nodeId, currentIndex) ->
                 let mutable i = 0
@@ -137,16 +124,19 @@ let NodeActor (mailbox: Actor<_>) =
                                 dist <- (Convert.ToInt32(candidateNode, l) -  Convert.ToInt32(id, l))
                                 if dist < distMin then
                                     nextNodeId <- candidateNode
-                            shl = 0
+                            shl <- 0
                         printfn "nextNodeId: %s" nextNodeId    
                         actorMap.[nextNodeId] <! Route(key, source, hops + 1.0)
             | ShowTable ->
                 printfn "Agaya"
-                for i = 0 to numDigits-1 do
-                    // for j = 0 to l-1 do
-                    //     printf "%s " routingTable.[i,j]
-                    printfn "%A" routingTable.[i,*]
-                printfn "============================================================="
+                for e in leafSet do
+                    printf "%s " e
+                printfn "__________________"
+                // for i = 0 to numDigits-1 do
+                //     // for j = 0 to l-1 do
+                //     //     printf "%s " routingTable.[i,j]
+                //     printfn "%A" routingTable.[i,*]
+                // printfn "============================================================="
             |_ ->
                 printfn "Error!\ns"
             
@@ -168,7 +158,6 @@ let main(args: array<string>) =
     numDigits <- Math.Log(numNodes|> double, 16.) |> ceil |> int
     printf "N:%d\nR:%d\nNumber of digits:%d\n" numNodes numRequests numDigits
     printf "Network construction initiated"
-    let actorRef  = spawn system "SupervisorActor" SupervisorActor
     let mutable nodeId:string=String.replicate numDigits "0"
     let mutable hexNum:string=""
     let mutable len = 0
@@ -219,8 +208,6 @@ let main(args: array<string>) =
         actorMap.[src] <! Route(dst,src,0.0)
         System.Threading.Thread.Sleep(300)
         printf "Rand src:%s dst:%s\n" src dst
-    if not errorFlag then
-        actorRef <! BossMessage 0
     
 main(Environment.GetCommandLineArgs())
 // If not for the below line, the program exits without printing anything.
