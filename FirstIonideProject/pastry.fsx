@@ -28,8 +28,27 @@ type WorkerMessage =
     | Route of string * string * double
     | UpdateRoutingTable of string[]
     | ShowTable
-    | Show of Set<string>
+    | ShowLeaf of string * Set<string>
+    | ShowStr of string
 
+let PrinterActor (mailbox: Actor<_>) =
+    let rec loop() = actor {
+        let! msg = mailbox.Receive()
+        match msg with
+        | ShowLeaf(nodeId, leafSet) ->
+            printf "For node %s len:%d = " nodeId leafSet.Count
+            for e in leafSet do
+                printf "%s " e
+            printfn ""
+        | ShowStr(str) ->
+            printfn "%s" str
+        | _ ->
+            printf ""
+        return! loop()
+    }
+    loop()
+
+let mutable printer = spawn system "PrinterActor" PrinterActor
 
 let NodeActor (mailbox: Actor<_>) = 
     // count keeps track of all the workers that finish their work and ping back to the supervisor
@@ -56,7 +75,7 @@ let NodeActor (mailbox: Actor<_>) =
                     if number+i>=numNodes then 
                         leafSet <- leafSet.Add((number+i-numNodes).ToString("X"))
                     else
-                        leafSet <- leafSet.Add((number-i).ToString("X"))
+                        leafSet <- leafSet.Add((number+i).ToString("X"))
 
             // Updates routing table for a new node
             | Join (nodeId, currentIndex) ->
@@ -84,21 +103,24 @@ let NodeActor (mailbox: Actor<_>) =
                 currentRow <- currentRow + 1
             // Routes a message with destination as key from source where hops is the hops traced so far
             | Route(key, source, hops) ->
+                printer <! ShowStr(sprintf "ThisNodeID: %s\n%s -> %s\n" id source key)
+                printer <! ShowStr(sprintf "%A\n" routingTable)
                 if key = id then
-                    if actorMap.ContainsKey source then
-                        printf "REACHED!! YIPEE;  Hops %A\n" hops
+                    if actorHopsMap.ContainsKey source then
+                        printer <! ShowStr(sprintf "REACHED!! YIPEE;  Hops %A\n" hops)
                         let total, avgHops = actorHopsMap.[source].[1], actorHopsMap.[source].[0]
                         actorHopsMap.[source].[0] <- ((avgHops*total)+hops)/(total+1.0)
                         actorHopsMap.[source].[1] <- total + 1.0
                     else
-                        printf "Special Case HERE\n"
+                        printf "actorsHop dsnt have the key\n"
                         let mutable tempArr = [|hops;1.0|]
                         actorHopsMap <- actorHopsMap.Add (source, tempArr)
+                        printer <! ShowStr(sprintf "actors Hop map No ERR")
                 elif leafSet.Contains key then
-                    printf "Second If Case HERE\n"
+                    printer <! ShowStr(sprintf "Second If Case HERE\n")
                     actorMap.[key] <! Route(key, source, hops + 1.0)
                 else
-                    printf "Third If Case HERE \n"
+                    printer <! ShowStr(sprintf "Third If Case HERE \n")
                 
                     let mutable i = 0
                     while key.[i] = id.[i] do
@@ -106,32 +128,39 @@ let NodeActor (mailbox: Actor<_>) =
                     let sharedPrefixLength = i
                     let check = 0
                     let rtrow = sharedPrefixLength
-                    printf "NumberOfDigit: %d\n Shared Prefix Len : %d \n" numDigits sharedPrefixLength
+                    printer <! ShowStr(sprintf "NumberOfDigit: %d\n Shared Prefix Len : %d \n" numDigits sharedPrefixLength)
                     let mutable rtcol = Convert.ToInt32(string(key.[sharedPrefixLength]), l)
-                    
+                    printer <! ShowStr(sprintf "row: %d | col: %d | routingTable.[rtrow,rtcol]: %s" rtrow rtcol routingTable.[rtrow,rtcol])
                     if not (isNull routingTable.[rtrow, rtcol]) then
+                        printer <! ShowStr(sprintf "Special Case HERE for rtrow rtcol\n")
                         actorMap.[routingTable.[rtrow,rtcol]] <! Route(key, source, hops+1.0)
                     else
+                        printer <! ShowStr(sprintf "Special Case HERE inside else for next node\n")
                         let mutable dist = 0
                         let mutable distMin = 2147483647
                         let mutable nextNodeId = ""
                         let mutable shl = 0
 
                         for candidateNode in leafSet do
+                            printer <! ShowStr(sprintf "sab thik 1")
                             while candidateNode.[shl] = id.[shl] do 
                                 shl <- shl + 1
+                            printer <! ShowStr(sprintf "sab thik 2")
                             if shl >= sharedPrefixLength then
                                 dist <- (Convert.ToInt32(candidateNode, l) -  Convert.ToInt32(id, l))
                                 if dist < distMin then
                                     nextNodeId <- candidateNode
                             shl <- 0
-                        printfn "nextNodeId: %s" nextNodeId    
+                        printer <! ShowStr(sprintf "nextNodeId: %s" nextNodeId)
                         actorMap.[nextNodeId] <! Route(key, source, hops + 1.0)
+                        printer <! ShowStr(sprintf "Special Case HERE for next Node id\n")
+
             | ShowTable ->
-                printfn "Agaya"
-                for e in leafSet do
-                    printf "%s " e
-                printfn "__________________"
+                printer <! ShowLeaf(id,leafSet)
+                // printfn "Agaya"
+                // for e in leafSet do
+                //     printf "%s " e
+                // printfn "__________________"
                 // for i = 0 to numDigits-1 do
                 //     // for j = 0 to l-1 do
                 //     //     printf "%s " routingTable.[i,j]
@@ -188,7 +217,7 @@ let main(args: array<string>) =
             hexNum <- i.ToString("X")
             len <- hexNum.Length
             nodeId <- String.concat  "" [String.replicate (numDigits-len) "0"; hexNum]
-            printfn "Ye table %s ka hai" (i.ToString("X"))
+            // printfn "Ye table %s ka hai" (i.ToString("X"))
             actorMap.[nodeId] <! ShowTable
             System.Threading.Thread.Sleep(100)
 
@@ -200,6 +229,15 @@ let main(args: array<string>) =
     printf  "ActorMap Keys :%A\nlength : %d\n" actorsArray actorsArray.Length
     printf  "ActorMap Keys :%s \n" actorsArray.[numNodes-1]
     let mutable src,dst= null, null
+
+    printfn "Waiting for 10 seconds...."
+    System.Threading.Thread.Sleep(5000)
+    
+    // for actmapping in actorMap do
+    //     printfn "%s | %A" actmapping.Key actmapping.Value
+
+    // System.Threading.Thread.Sleep(10000)
+
     for i in 0..numRequests-1 do
         src <- actorsArray.[i%actorsArray.Length] 
         dst <- actorsArray.[rnd.Next()%actorsArray.Length]
