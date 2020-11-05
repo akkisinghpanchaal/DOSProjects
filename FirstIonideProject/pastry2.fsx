@@ -75,13 +75,13 @@ let NodeActor (mailbox: Actor<_>) =
                 let number = Convert.ToInt32(id, l)
                 for i in [1..l/2] do
                     if number-i<0 then
-                        s <- (numNodes-i).ToString("X")
+                        s <- (number+(l/2)+i).ToString("X")
                     else
                         s <- (number-i).ToString("X")
                     s <- String.concat  "" [String.replicate (numDigits-s.Length) "0"; s]
                     leafSet <- leafSet.Add((s))
                     if number+i>=numNodes then 
-                        s <- ((number+i)%numNodes).ToString("X")
+                        s <- (number-(l/2)-i).ToString("X")
                     else
                         s <- (number+i).ToString("X")
                     if numDigits>s.Length then
