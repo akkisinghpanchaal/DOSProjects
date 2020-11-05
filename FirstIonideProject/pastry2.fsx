@@ -72,16 +72,19 @@ let NodeActor (mailbox: Actor<_>) =
             // Initialization phase of a network node
             | Init(passedId) ->
                 id <- passedId
+                let mutable missCount = 0
                 let number = Convert.ToInt32(id, l)
                 for i in [1..l/2] do
                     if number-i<0 then
-                        s <- (number+(l/2)+i).ToString("X")
+                        missCount <- missCount + 1
+                        s <- (number+(l/2)+missCount).ToString("X")
                     else
                         s <- (number-i).ToString("X")
                     s <- String.concat  "" [String.replicate (numDigits-s.Length) "0"; s]
                     leafSet <- leafSet.Add((s))
-                    if number+i>=numNodes then 
-                        s <- (number-(l/2)-i).ToString("X")
+                    if number+i>=numNodes then
+                        missCount <- missCount + 1
+                        s <- (number-(l/2)-missCount).ToString("X")
                     else
                         s <- (number+i).ToString("X")
                     if numDigits>s.Length then
@@ -148,7 +151,7 @@ let NodeActor (mailbox: Actor<_>) =
                     display (sprintf "Forwarding the message to %s..." nextNodeId)
                     actorMap.[nextNodeId] <! Route(key, source, hops + 1.0)
                 else
-              
+                    display (sprintf "Routing table: %A\n" routingTable)
                     display "The key was not in the leaf set range. Finding next hop in the routing table..."
                     let mutable i = 0
                     while key.[i] = id.[i] do
@@ -203,7 +206,6 @@ let NodeActor (mailbox: Actor<_>) =
                                             // then forward the message to this candidate node
                                             if dist < distCurrToDest then
                                                 nextNodeId <- candidateNode
-                                                breakTheLoop <- true
                                         shl <- 0
                                     c <- c + 1
                                 r <- r + 1
@@ -244,8 +246,10 @@ let main(args: array<string>) =
     printf "N:%d\nR:%d\nNumber of digits:%d\n" numNodes numRequests numDigits
     printf "Network construction initiated"
     let mutable nodeId:string=String.replicate numDigits "0"
+    let mutable refNode:string= String.replicate numDigits "0"
     let mutable hexNum:string=""
     let mutable len = 0
+    let mutable reflen = 0
     printf "Node Id: %s\n" nodeId
     let mutable actor = spawn system nodeId NodeActor
     actor <! Init nodeId
@@ -270,17 +274,23 @@ let main(args: array<string>) =
         // printf "\nNode creating %s\n" nodeId
         actor <- spawn system (string nodeId) NodeActor
         actor <! Init(nodeId)
+        if i > numNodes/2 then
+            refNode <- (rnd.Next()%(numNodes/2)).ToString("X")
+        elif i> numNodes/4 then
+            refNode <- (rnd.Next()%(i)).ToString("X")
+        reflen <- refNode.Length
+        // printf "%s numDigits-len %d\n" hexNum (numDigits-len)
+        refNode <- String.concat  "" [String.replicate (numDigits-reflen) "0"; refNode]
         actorMap <- actorMap.Add(nodeId,actor)
-        actorMap.[String.replicate numDigits "0"] <! Join(nodeId,0)
-        System.Threading.Thread.Sleep(100)
+        actorMap.[refNode] <! Join(nodeId,0)
+        System.Threading.Thread.Sleep(300)
 
-    if true then
+    if false then
         for i in [0..numNodes-1] do
             hexNum <- i.ToString("X")
             len <- hexNum.Length
             nodeId <- String.concat  "" [String.replicate (numDigits-len) "0"; hexNum]
             actorMap.[nodeId] <! ShowTable
-            System.Threading.Thread.Sleep(100)
 
     printf "\nNetwork is built!!!\n"
     let actorsArray = Keys(actorMap)
@@ -299,7 +309,7 @@ let main(args: array<string>) =
             dst <- actorsArray.[rnd.Next()%actorsArray.Length]
         printf "Rand src:%s dst:%s\n" src dst
         actorMap.[src] <! Route(dst,src,0.0)
-        System.Threading.Thread.Sleep(3000)
+        System.Threading.Thread.Sleep(2500)
 
     System.Threading.Thread.Sleep(3000)
     display "Requests processed"
