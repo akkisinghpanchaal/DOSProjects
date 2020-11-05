@@ -56,6 +56,13 @@ let display msg =
 
 let hex2int code = Convert.ToInt32(code, l)
 
+// returns a hexadecimal representation string of a number of length numDigits by padding leading zeros if necessary
+let int2hex (num:int) = 
+    let mutable hexStr = num.ToString("X")
+    if hexStr.Length < numDigits then
+        hexStr <- String.concat  "" [String.replicate (numDigits-hexStr.Length) "0"; hexStr]
+    hexStr
+
 let NodeActor (mailbox: Actor<_>) = 
     // count keeps track of all the workers that finish their work and ping back to the supervisor
     // *****************************************
@@ -75,17 +82,14 @@ let NodeActor (mailbox: Actor<_>) =
                 let number = Convert.ToInt32(id, l)
                 for i in [1..l/2] do
                     if number-i<0 then
-                        s <- (number+(l/2)+i).ToString("X")
+                        s <- int2hex(number+(l/2)+i)
                     else
-                        s <- (number-i).ToString("X")
-                    s <- String.concat  "" [String.replicate (numDigits-s.Length) "0"; s]
+                        s <- int2hex(number-i)
                     leafSet <- leafSet.Add((s))
                     if number+i>=numNodes then 
-                        s <- (number-(l/2)-i).ToString("X")
+                        s <- int2hex(number-(l/2)-i)
                     else
-                        s <- (number+i).ToString("X")
-                    if numDigits>s.Length then
-                        s <- String.concat  "" [String.replicate (numDigits-s.Length) "0"; s]
+                        s <- int2hex(number+i)
                     leafSet <- leafSet.Add((s))
             // Updates routing table for a new node
             | Join (nodeId, currentIndex) ->
@@ -114,9 +118,6 @@ let NodeActor (mailbox: Actor<_>) =
             // Routes a message with destination as key from source where hops is the hops traced so far
             | Route(key, source, hops) ->
                 display (sprintf "%s -> %s\nAt : %s\n" source key id)
-                // printer <! ShowStr(sprintf "Routing Table %A\n" routingTable)
-                // printer <! ShowStr(sprintf "Leaf Set %A" leafSet)
-                // printer <! ShowStr(sprintf "--------------------------------")
                 if key = id then
                     printer <! ShowStr(sprintf "--------------REACHED-----------!!!\n #ofHops: %A\n" hops)
                     if actorHopsMap.ContainsKey source then
@@ -166,18 +167,9 @@ let NodeActor (mailbox: Actor<_>) =
 
             | ShowTable ->
                 printer <! ShowLeaf(id,leafSet)
-                // printfn "Agaya"
-                // for e in leafSet do
-                //     printf "%s " e
-                // printfn "__________________"
-                // for i = 0 to numDigits-1 do
-                //     // for j = 0 to l-1 do
-                //     //     printf "%s " routingTable.[i,j]
-                //     printfn "%A" routingTable.[i,*]
-                // printfn "============================================================="
             |_ ->
                 printfn "Error!\ns"
-            
+
         return! loop ()
     }
     loop ()
@@ -216,22 +208,20 @@ let main(args: array<string>) =
         if i = mark75pct then
             display "75% of network constructed"
 
-        hexNum <- i.ToString("X")
+        hexNum <- int2hex(i)
         len <- hexNum.Length
-        // printf "%s numDigits-len %d\n" hexNum (numDigits-len)
-        nodeId <- String.concat  "" [String.replicate (numDigits-len) "0"; hexNum]
-        // printf "\nNode creating %s\n" nodeId
+        nodeId <- hexNum
         actor <- spawn system (string nodeId) NodeActor
         actor <! Init(nodeId)
         actorMap <- actorMap.Add(nodeId,actor)
         actorMap.[String.replicate numDigits "0"] <! Join(nodeId,0)
-        System.Threading.Thread.Sleep(100)
+        System.Threading.Thread.Sleep(5)
 
-    if true then
+    if false then
         for i in [0..numNodes-1] do
-            hexNum <- i.ToString("X")
+            hexNum <- int2hex(i)
             len <- hexNum.Length
-            nodeId <- String.concat  "" [String.replicate (numDigits-len) "0"; hexNum]
+            nodeId <- hexNum
             actorMap.[nodeId] <! ShowTable
             System.Threading.Thread.Sleep(100)
 
@@ -250,7 +240,7 @@ let main(args: array<string>) =
         dst <- actorsArray.[rnd.Next()%actorsArray.Length]
         while dst = src do
             dst <- actorsArray.[rnd.Next()%actorsArray.Length]
-        printf "Rand src:%s dst:%s\n" src dst
+        // printf "Rand src:%s dst:%s\n" src dst
         actorMap.[src] <! Route(dst,src,0.0)
         System.Threading.Thread.Sleep(3000)
 

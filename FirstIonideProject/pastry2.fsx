@@ -165,52 +165,55 @@ let NodeActor (mailbox: Actor<_>) =
                         display (sprintf "Next hop found in the routing table. Forwarding to %s" routingTable.[rtrow,rtcol])
                         actorMap.[routingTable.[rtrow,rtcol]] <! Route(key, source, hops+1.0)
                     else
-                        display "Routing table entry is null. Entered the rare case..."
-                        display "Determining the next node from either the leafset or routing table or neighborhood..."
-                        let mutable dist = 0
-                        let mutable distMin = 2147483647
-                        let mutable nextNodeId: string = ""
-                        let mutable shl = 0
+                        if hops >= float(numDigits) then
+                            actorMap.[key] <! Route(key, source, hops)
+                        else
+                            display "Routing table entry is null. Entered the rare case..."
+                            display "Determining the next node from either the leafset or routing table or neighborhood..."
+                            let mutable dist = 0
+                            let mutable distMin = 2147483647
+                            let mutable nextNodeId: string = ""
+                            let mutable shl = 0
 
-                        // Distance between the current node and the destination node
-                        let distCurrToDest = abs(hex2int(id) - hex2int(key))
-                        
-                        for candidateNode in leafSet do
-                            while candidateNode.[shl] = id.[shl] do 
-                                shl <- shl + 1
-                            if shl >= sharedPrefixLength then
-                                dist <- abs (hex2int(candidateNode) -  hex2int(id))
-                                if dist < distCurrToDest then
-                                    nextNodeId <- candidateNode
-                            shl <- 0
+                            // Distance between the current node and the destination node
+                            let distCurrToDest = abs(hex2int(id) - hex2int(key))
+                            
+                            for candidateNode in leafSet do
+                                while candidateNode.[shl] = id.[shl] do 
+                                    shl <- shl + 1
+                                if shl >= sharedPrefixLength then
+                                    dist <- abs (hex2int(candidateNode) -  hex2int(id))
+                                    if dist < distCurrToDest then
+                                        nextNodeId <- candidateNode
+                                shl <- 0
 
-                        // Now check in the routing table only if no next node was determined in the leaf set
-                        if nextNodeId = "" then
-                            let mutable r = 0
-                            let mutable c = 0
-                            let mutable breakTheLoop = false
+                            // Now check in the routing table only if no next node was determined in the leaf set
+                            if nextNodeId = "" then
+                                let mutable r = 0
+                                let mutable c = 0
+                                let mutable breakTheLoop = false
 
-                            while not breakTheLoop && (r < numDigits) do
-                                while not breakTheLoop && (c < l) do
-                                    if not (isNull routingTable.[r,c]) then
-                                        let mutable candidateNode = routingTable.[r,c]
-                                        // get the shared prefix length
-                                        while candidateNode.[shl] = id.[shl] do
-                                            shl <- shl + 1
-                                        // Proceed only if the shared prefix length is as long as with the current node
-                                        if shl >= sharedPrefixLength then
-                                            // Distance between the candidate node and the destination.
-                                            // The candidate key can either be from the leafset of the routing table.
-                                            dist <- abs(hex2int(candidateNode) - hex2int(key))
-                                            // If the distance is less than the distance between current node and the destination,
-                                            // then forward the message to this candidate node
-                                            if dist < distCurrToDest then
-                                                nextNodeId <- candidateNode
-                                        shl <- 0
-                                    c <- c + 1
-                                r <- r + 1
-                        display (sprintf "Forwarding to the next node: %s" nextNodeId)
-                        actorMap.[nextNodeId] <! Route(key, source, hops + 1.0)
+                                while not breakTheLoop && (r < numDigits) do
+                                    while not breakTheLoop && (c < l) do
+                                        if not (isNull routingTable.[r,c]) then
+                                            let mutable candidateNode = routingTable.[r,c]
+                                            // get the shared prefix length
+                                            while candidateNode.[shl] = id.[shl] do
+                                                shl <- shl + 1
+                                            // Proceed only if the shared prefix length is as long as with the current node
+                                            if shl >= sharedPrefixLength then
+                                                // Distance between the candidate node and the destination.
+                                                // The candidate key can either be from the leafset of the routing table.
+                                                dist <- abs(hex2int(candidateNode) - hex2int(key))
+                                                // If the distance is less than the distance between current node and the destination,
+                                                // then forward the message to this candidate node
+                                                if dist < distCurrToDest then
+                                                    nextNodeId <- candidateNode
+                                            shl <- 0
+                                        c <- c + 1
+                                    r <- r + 1
+                            display (sprintf "Forwarding to the next node: %s" nextNodeId)
+                            actorMap.[nextNodeId] <! Route(key, source, hops + 1.0)
                 
 
             | ShowTable ->
@@ -269,9 +272,7 @@ let main(args: array<string>) =
 
         hexNum <- i.ToString("X")
         len <- hexNum.Length
-        // printf "%s numDigits-len %d\n" hexNum (numDigits-len)
         nodeId <- String.concat  "" [String.replicate (numDigits-len) "0"; hexNum]
-        // printf "\nNode creating %s\n" nodeId
         actor <- spawn system (string nodeId) NodeActor
         actor <! Init(nodeId)
         if i > numNodes/2 then
@@ -283,7 +284,7 @@ let main(args: array<string>) =
         refNode <- String.concat  "" [String.replicate (numDigits-reflen) "0"; refNode]
         actorMap <- actorMap.Add(nodeId,actor)
         actorMap.[refNode] <! Join(nodeId,0)
-        System.Threading.Thread.Sleep(300)
+        System.Threading.Thread.Sleep(5)
 
     if false then
         for i in [0..numNodes-1] do
@@ -309,12 +310,12 @@ let main(args: array<string>) =
             dst <- actorsArray.[rnd.Next()%actorsArray.Length]
         printf "Rand src:%s dst:%s\n" src dst
         actorMap.[src] <! Route(dst,src,0.0)
-        System.Threading.Thread.Sleep(2500)
+        System.Threading.Thread.Sleep(1000)
 
-    System.Threading.Thread.Sleep(3000)
     display "Requests processed"
     let mutable totalHopSize:double = 0.0
     display "Computing average hop size"
+    System.Threading.Thread.Sleep(3000)
 
     for pair in actorHopsMap do
         totalHopSize <- totalHopSize + pair.Value.[0]
