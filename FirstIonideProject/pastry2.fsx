@@ -81,7 +81,7 @@ let NodeActor (mailbox: Actor<_>) =
                     s <- String.concat  "" [String.replicate (numDigits-s.Length) "0"; s]
                     leafSet <- leafSet.Add((s))
                     if number+i>=numNodes then 
-                        s <- (number-i-numNodes).ToString("X")
+                        s <- ((number+i)%numNodes).ToString("X")
                     else
                         s <- (number+i).ToString("X")
                     if numDigits>s.Length then
@@ -127,10 +127,12 @@ let NodeActor (mailbox: Actor<_>) =
                     else
                         let mutable tempArr = [|hops;1.0|]
                         actorHopsMap <- actorHopsMap.Add (source, tempArr)
+
                 elif leafSet.Contains key then
                     display "The key is found inside the leafset..."
                     actorMap.[key] <! Route(key, source, hops + 1.0)
-                elif (hex2int(key) > hex2int(leafSet.MinimumElement)) && (hex2int(key) < hex2int(leafSet.MaximumElement)) then
+
+                elif (hex2int(key) >= hex2int(leafSet.MinimumElement)) && (hex2int(key) <= hex2int(leafSet.MaximumElement)) then
                     display "The key is in the range of the leaf set..."
                     // If the destination key is in the range of the leafset, then
                     //  forward it to the nearest possible node in the leafset
@@ -146,6 +148,7 @@ let NodeActor (mailbox: Actor<_>) =
                     display (sprintf "Forwarding the message to %s..." nextNodeId)
                     actorMap.[nextNodeId] <! Route(key, source, hops + 1.0)
                 else
+              
                     display "The key was not in the leaf set range. Finding next hop in the routing table..."
                     let mutable i = 0
                     while key.[i] = id.[i] do
