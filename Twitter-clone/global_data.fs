@@ -34,7 +34,8 @@ type GlobalData() =
         privateAddConnectedServers count
     
     member this.AddUsers count =
-        privateAddUsers count
+        // privateAddUsers count
+        users <- users + count
     
     member this.AddTweets count =
         privateAddTweets count
