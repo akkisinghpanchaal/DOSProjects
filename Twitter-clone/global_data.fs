@@ -1,4 +1,4 @@
-module TwitterClone
+module GlobalDataMod
 
 type GlobalData() =
     let mutable connectedServers = 0
@@ -28,14 +28,12 @@ type GlobalData() =
 
     member this.Tweets
         with get() = tweets
-        // and set(count) = tweets <- tweets + count
 
     member this.AddServers count =
         privateAddConnectedServers count
     
     member this.AddUsers count =
-        // privateAddUsers count
-        users <- users + count
+        privateAddUsers count
     
     member this.AddTweets count =
         privateAddTweets count
