@@ -5,13 +5,14 @@
 #r "nuget: Akka.FSharp" 
 #r "nuget: Akka.TestKit" 
 
-open GlobalDataMod
-open TweetMod
+// open GlobalDataMod
+// open TweetMod
 open UserMod
+open Server
 open System
 open Akka.Actor
 open Akka.FSharp
-open Akka.Configuration
+// open Akka.Configuration
 
 // let instance = User(69)
 // instance.AddToFollowers ["loda";"lassan"] 
@@ -22,20 +23,11 @@ let mutable numNodes:int = 0
 let mutable numTweets:int = 0
 printfn "UserId: %A" instance.Id
 
-let Server (mailbox: Actor<_>) =
-    let mutable hcount=0
-    let rec loop() = actor {
-
-        return! loop()
-    }
-    loop()
-
 
 let main(args: array<string>) =
     // if args.Length < 1 then
         
-    let mutable actor = spawn system "server" 
-        0
+    let mutable actor = spawn system "server" Server
     // else
     //     //spawn client
     let n,r = int(args.[3]),int(args.[4])
