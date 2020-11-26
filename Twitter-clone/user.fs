@@ -1,42 +1,52 @@
 module UserMod
 
-type User(uId) = 
+type User(uId: string, password:string) = 
     // private immutable value
 
     let created = 0
     // private mutable value
-    let mutable followers: List<string> = List.empty
+    let mutable followers: Set<string> = Set.empty
 
-    let mutable tweets: List<string> = List.empty
+    let mutable following: Set<string> = Set.empty
 
-    let mutable timeLine: List<string> = List.empty
+    let mutable tweets: Set<int> = Set.empty
+
+    let mutable timeLine: Set<int> = Set.empty
+
+    let password = password
+    
+    // member this.Login(givenPassword) = 
+    //     if password = givenPassword then
 
     member this.Followers
         with get() = followers
+
+    member this.Following
+        with get() = following
     
     member this.Timeline
         with get() = timeLine
     
     member this.Tweets
         with get() = tweets
-    
 
     member this.Id = uId
 
     // private function definition
-    member this.AddToFollowers input = 
-        followers <- followers @ input
- 
+    member this.AddToFollowers followerUsername = 
+        followers <- followers.Add(followerUsername)
+    
+    member this.AddToFollowings followedUsername = 
+        following <- following.Add(followedUsername)
+
     // private function definition
-    member this.AddToTimeline input = 
-        timeLine <- timeLine @ input
+    member this.AddToTimeline tweetId = 
+        timeLine <- timeLine.Add(tweetId)
 
     member this.AddToTweets input = 
-        tweets <- tweets @ input
+        tweets <- tweets.Add(input)
 
-// test
-let instance = User(69)
-instance.AddToFollowers ["loda";"lassan"] 
-instance.AddToTimeline ["lod";"assan"] 
-
-
+// // test
+// let instance = User(69)
+// instance.AddToFollowers ["loda";"lassan"] 
+// instance.AddToTimeline ["lod";"assan"] 

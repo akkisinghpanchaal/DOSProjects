@@ -7,6 +7,9 @@
 
   <ItemGroup>
     <Compile Include="global_data.fs" />
+    <Compile Include="user.fs" />
+    <Compile Include="tweet.fs" />
+    <Compile Include="messages.fs" />
   </ItemGroup>
 
   <ItemGroup>
