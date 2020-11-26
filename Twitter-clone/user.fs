@@ -3,7 +3,7 @@ module UserMod
 type User(uId: string, password:string) = 
     // private immutable value
 
-    let created = 0
+    let created = System.DateTime.Now
     // private mutable value
     let mutable followers: Set<string> = Set.empty
 

@@ -2,13 +2,14 @@ module ServerMod
 
 #load @"messages.fs"
 #load @"user.fs"
+#load @"tweet.fs"
 #load @"global_data.fsx"
 
 #r "nuget: Akka.FSharp" 
 #r "nuget: Akka.TestKit" 
 
 open System
-
+open TweetMod
 open Akka.Actor
 open Akka.FSharp
 
@@ -76,8 +77,18 @@ let signInUser (username:string) (password: string) =
         signInStatus <- true
     signInStatus
 
-let distributeTweet (creatorUsername: string) (tweetContent: string) =
-    printf "Todo"
+let distributeTweet (username: string) (cntnt: string) =
+    let mutable response,status = "",false
+    if not (userExists username) then
+        response <- "Error: User " + username + " does not exist in the database."
+    elif not (globalData.LoggedInUsers.Contains username) then
+        response <- "Error: User " + username + " is not logged in." 
+    else
+        let tweet = Tweet(tweetAutoIncrement,username,cntnt)
+        globalData.AddTweets tweetAutoIncrement tweet
+        response <- "Success"
+        status<-true
+    response,status
 
 let signOutUser (username:string): bool = 
     let mutable signOutStatus = false
@@ -91,27 +102,31 @@ let signOutUser (username:string): bool =
 // ------------------------------------------------------------------------------
 
 let Server (mailbox: Actor<_>) =
-    let mutable srcdst:Map<String,String> = Map.empty
+    let mutable response:string = ""
     let rec loop() = actor {
         let! msg = mailbox.Receive()
         match msg with
         | SignUp(username,pwd) ->
             if signUpUser username pwd then
-                printfn "Successfully Signed up User: %s\n" username
+                response <- "Successfully Signed up User:" + username
             else
-                printfn "Could not signup user %s." username
+                response <- "Could not signup user" + username
         | SignIn(username, pwd) ->
             if signInUser username pwd then
-                printfn "Successfully Signed In User: %s\n" username
+                response <- "Successfully Signed In User: " + username
             else
-                printfn "Could not signIn user %s." username
+                response <- "Could not signIn user." + username
+            mailbox.Sender() <! Response(response)
         | SignOut(username) ->
             if signOutUser username then
-                printfn "Successfully Signed out User: %s\n" username
+                response <- "Successfully Signed out User:" + username
             else
-                printfn "Could not sign out user %s." username
-        | SendTweet(senderUser, content) ->
+                response <- "Could not sign out user: " + username
+            mailbox.Sender() <! Response(response)
+        | RegisterTweet(senderUser, content) ->
             printfn "User: %s and Tweet: %s" senderUser content
+            let res,status = distributeTweet senderUser content
+            mailbox.Sender() <! Response(res)
         | Follow(follower, followed) ->
             printfn "User %s is now following user %s" follower followed
         | SendReTweet(username, subjectTweetId) ->
@@ -119,7 +134,7 @@ let Server (mailbox: Actor<_>) =
         | FindTweets(a) ->
             printf "sdf"
         | ShowData ->
-            printfn "%A\n%A" globalData.Users globalData.LoggedInUsers
+            printfn "%A\n%A\n%A" globalData.Users globalData.LoggedInUsers globalData.Tweets
         // | _ ->
         //     printfn "server test"
         return! loop()

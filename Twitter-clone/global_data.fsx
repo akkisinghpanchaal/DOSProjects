@@ -5,7 +5,6 @@ module GlobalDataMod
 
 open UserMod
 open TweetMod
-open System
 
 type GlobalData() =
     let mutable connectedServers = 0
@@ -21,9 +20,9 @@ type GlobalData() =
     let privateAddConnectedServers count = 
         connectedServers <- connectedServers + count    
 
-    let privateAddTweets count = 
-        // tweets <- tweets + count
-        printfn "yo"
+    let privateAddTweets (tweetId:int) (tweet: Tweet) = 
+        tweets <- tweets.Add(tweetId,tweet)
+        printfn "Tweet added!!!!!!!!!!!!!"
     
     let privateAddUsers (username:string) (userObj: User) = 
         users <- users.Add(username, userObj)
@@ -55,8 +54,8 @@ type GlobalData() =
     member this.AddUsers count =
         privateAddUsers count
     
-    member this.AddTweets count =
-        privateAddTweets count
+    member this.AddTweets (tweetid:int) (payload:Tweet) =
+        privateAddTweets tweetid payload
 
     member this.MarkUserLoggedIn username =
         markUserLoggedIn username
