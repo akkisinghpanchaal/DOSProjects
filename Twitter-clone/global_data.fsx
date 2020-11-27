@@ -23,8 +23,8 @@ type GlobalData() =
     let privateAddHashtags (tweet: Tweet) = 
         for h in tweet.Hashtags do
             if hashtags.ContainsKey(h) then
-                let updatedIds = Array.append hashtags.Item(h) [|tweet.Id|]
-                hashtags <- hashtags.Change(h,updatedIds)
+                let updatedIds = Array.append hashtags.[h] [|tweet.Id|]
+                hashtags <- hashtags.Add(h,updatedIds)
             else
                 hashtags <- hashtags.Add(h,[|tweet.Id|])
         //call private add mentions
@@ -51,6 +51,9 @@ type GlobalData() =
 
     member this.Tweets
         with get() = tweets
+    
+    member this.Hashtags
+        with get() = hashtags
 
     member this.LoggedInUsers
         with get() = loggedInUsers

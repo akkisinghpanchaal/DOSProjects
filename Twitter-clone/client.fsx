@@ -34,8 +34,6 @@ let Client (mailbox: Actor<_>) =
             serverActor <! FollowUser(username,followed)
         |Response(res,status) -> 
             printfn "Server: %s %b" res status
-        |_ ->
-            printf "Default\n"
         return! loop()
     }
     loop()

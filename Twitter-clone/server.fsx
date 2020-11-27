@@ -88,7 +88,7 @@ let distributeTweet (username: string) (cntnt: string) =
     else
         let tweet = Tweet(tweetAutoIncrement,username,cntnt)
         // printfn "Tweet Info %d %A %A" tweet.Id tweet.Mentions tweet.Hashtags
-        globalData.AddTweet tweet
+        globalData.AddTweet(tweet)
         response <- "Tweet registered successfully"
         globalData.Users.Item(username).AddToTimeline(tweetAutoIncrement)
         globalData.Users.Item(username).AddToTweets(tweetAutoIncrement)
@@ -131,7 +131,7 @@ let Server (mailbox: Actor<_>) =
         | FindTweets(a) ->
             printf "sdf"
         | ShowData ->
-            printfn "%A\n%A\n%A" globalData.Users globalData.LoggedInUsers globalData.Tweets
+            printfn "%A\n%A\n%A\n%A" globalData.Users globalData.LoggedInUsers globalData.Tweets globalData.Hashtags
         // | _ ->
         //     printfn "server test"
         return! loop()
