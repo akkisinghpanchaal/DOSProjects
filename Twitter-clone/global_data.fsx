@@ -20,8 +20,18 @@ type GlobalData() =
     let privateAddConnectedServers count = 
         connectedServers <- connectedServers + count    
 
-    let privateAddTweets (tweetId:int) (tweet: Tweet) = 
-        tweets <- tweets.Add(tweetId,tweet)
+    let privateAddHashtags (tweet: Tweet) = 
+        for h in tweet.Hashtags do
+            if hashtags.ContainsKey(h) then
+                let updatedIds = Array.append hashtags.Item(h) [|tweet.Id|]
+                hashtags <- hashtags.Change(h,updatedIds)
+            else
+                hashtags <- hashtags.Add(h,[|tweet.Id|])
+        //call private add mentions
+
+    let privateAddTweets (tweet: Tweet) = 
+        tweets <- tweets.Add(tweet.Id,tweet)
+        privateAddHashtags tweet
     
     let privateAddUsers (username:string) (userObj: User) = 
         users <- users.Add(username, userObj)
@@ -35,11 +45,9 @@ type GlobalData() =
 // =================== methods =======================
     member this.ConnectedServers
         with get() = connectedServers
-        // and set(count) = connectedServers <- connectedServers + count
 
     member this.Users
         with get() = users
-        // and set(newMap) = users <- newMap
 
     member this.Tweets
         with get() = tweets
@@ -53,8 +61,8 @@ type GlobalData() =
     member this.AddUsers count =
         privateAddUsers count
     
-    member this.AddTweets (tweetid:int) (payload:Tweet) =
-        privateAddTweets tweetid payload
+    member this.AddTweet (payload:Tweet) =
+        privateAddTweets payload
 
     member this.MarkUserLoggedIn username =
         markUserLoggedIn username

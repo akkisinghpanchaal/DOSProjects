@@ -74,8 +74,10 @@ let signInUser (username:string) (password: string) =
         response <- sprintf "User %s is already logged in." username
     else
         globalData.MarkUserLoggedIn username
+        response <- sprintf "User %s logged in." username
         status <- true
     response,status
+
 
 let distributeTweet (username: string) (cntnt: string) =
     let mutable response,status = "",false
@@ -85,8 +87,12 @@ let distributeTweet (username: string) (cntnt: string) =
         response <- "Error: User " + username + " is not logged in." 
     else
         let tweet = Tweet(tweetAutoIncrement,username,cntnt)
-        globalData.AddTweets tweetAutoIncrement tweet
+        // printfn "Tweet Info %d %A %A" tweet.Id tweet.Mentions tweet.Hashtags
+        globalData.AddTweet tweet
         response <- "Tweet registered successfully"
+        globalData.Users.Item(username).AddToTimeline(tweetAutoIncrement)
+        globalData.Users.Item(username).AddToTweets(tweetAutoIncrement)
+        tweetAutoIncrement <- tweetAutoIncrement+1
         status<-true
     response,status
 

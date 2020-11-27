@@ -12,9 +12,9 @@ open ApiMsgs
 open System
 open ClientMod
 open Akka.FSharp
+
 module DriverMod =
     let randomStr = 
-        // let chars = "ABCDEFGHIJKLMNOPQRSTUVWUXYZ0123456789"
         let chars = "abcdefghijklmnopqrstuvwxyz"
         let charsLen = chars.Length
         let random = System.Random()
@@ -35,13 +35,10 @@ module DriverMod =
         clientActor2 <! Register("rajat.rai","1234")
         clientActor <! Login
         clientActor2 <! Login
-        let str = randomStr(10)
-        printfn "rand : %s" str
-        clientActor <! SendTweet(str)
-        clientActor2 <! SendTweet(str)
-        // serverActor <! ShowData
-        // serverActor <! SignOut("rajat.rai")
-        System.Threading.Thread.Sleep(3000)
+        clientActor <! SendTweet(randomStr(10))
+        clientActor <! SendTweet("#1231 @123 @assd")
+        clientActor2 <! SendTweet("#1231 #123123 #asdkfmewsdf")
+        System.Threading.Thread.Sleep(500)
         serverActor <! ShowData
 
 

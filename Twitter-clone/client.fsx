@@ -28,10 +28,12 @@ let Client (mailbox: Actor<_>) =
             serverActor <! SignUp(id,pwd)
         | Login -> 
             serverActor<! SignIn(id,pwd)
-        | Response(res,status) -> 
-            printfn "Client: %s %b" res status
         | SendTweet(cntnt) ->
             serverActor<! RegisterTweet(id, cntnt) 
+        |FollowUser(username, followed) ->
+            serverActor <! FollowUser(username,followed)
+        |Response(res,status) -> 
+            printfn "Server: %s %b" res status
         |_ ->
             printf "Default\n"
         return! loop()
