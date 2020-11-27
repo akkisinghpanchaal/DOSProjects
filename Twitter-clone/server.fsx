@@ -8,11 +8,7 @@ module ServerMod
 #r "nuget: Akka.FSharp" 
 #r "nuget: Akka.TestKit" 
 
-open System
-open TweetMod
-open Akka.Actor
 open Akka.FSharp
-
 open ApiMsgs
 open GlobalDataMod
 open UserMod

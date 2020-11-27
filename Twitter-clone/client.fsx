@@ -30,8 +30,10 @@ let Client (mailbox: Actor<_>) =
             serverActor<! SignIn(id,pwd)
         | SendTweet(content) ->
             serverActor<! RegisterTweet(id, content) 
-        |FollowUser(username, followed) ->
-            serverActor <! FollowUser(username,followed)
+        | SendReTweet(content,retweetId) ->
+            serverActor<! RegisterReTweet(id, content, retweetId) 
+        |FollowUser(followed) ->
+            serverActor <! Follow(id,followed)
         |Response(res,status) -> 
             printfn "Server: %s %b" res status
         return! loop()
