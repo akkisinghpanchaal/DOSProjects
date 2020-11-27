@@ -18,8 +18,6 @@ open GlobalDataMod
 open UserMod
 
 let mutable globalData = GlobalData()
-let mutable userAutoIncrement = 1
-let mutable tweetAutoIncrement = 1
 
 // let DataHandler (mailbox: Actor<_>) =
 //     let mutable srcdst:Map<String,String> = Map.empty
@@ -79,22 +77,23 @@ let signInUser (username:string) (password: string) =
     response,status
 
 
-let distributeTweet (username: string) (cntnt: string) =
+let distributeTweet (username: string) (content: string) (isRetweeted: bool) (parentTweetId: int) =
     let mutable response,status = "",false
     if not (userExists username) then
         response <- "Error: User " + username + " does not exist in the database."
     elif not (globalData.LoggedInUsers.Contains username) then
         response <- "Error: User " + username + " is not logged in." 
     else
-        let tweet = Tweet(tweetAutoIncrement,username,cntnt)
         // printfn "Tweet Info %d %A %A" tweet.Id tweet.Mentions tweet.Hashtags
-        globalData.AddTweet(tweet)
-        response <- "Tweet registered successfully"
-        globalData.Users.Item(username).AddToTimeline(tweetAutoIncrement)
-        globalData.Users.Item(username).AddToTweets(tweetAutoIncrement)
-        tweetAutoIncrement <- tweetAutoIncrement+1
+        if not isRetweeted then
+            globalData.AddTweet content username
+            response <- "Tweet registered successfully"
+        else
+            globalData.AddReTweet content username parentTweetId
+            response <- "ReTweet registered successfully"
         status<-true
     response,status
+
 
 let signOutUser (username:string) = 
     let mutable response,status = "",false
@@ -104,6 +103,14 @@ let signOutUser (username:string) =
         globalData.MarkUserLoggedOut username
         response<- "User logged out successfully."
         status <- true
+    response,status
+
+let followAccount (followerUsername: string) (followedUsername: string) =
+    let mutable response, status = "",false
+    globalData.Users.[followedUsername].AddToFollowers(followerUsername)
+    globalData.Users.[followerUsername].AddToFollowings(followedUsername)
+    response <- "User " + followerUsername + " started following user " + followedUsername
+    status <- true
     response,status
 
 // ------------------------------------------------------------------------------
@@ -122,16 +129,19 @@ let Server (mailbox: Actor<_>) =
             let res,status = signOutUser username
             mailbox.Sender() <! Response(res,status)
         | RegisterTweet(senderUser, content) ->
-            let res,status = distributeTweet senderUser content
+            let res,status = distributeTweet senderUser content false -1
             mailbox.Sender() <! Response(res,status)
+        | RegisterReTweet(senderUser, content, subjectTweetId) ->
+            let res, status = distributeTweet senderUser content true subjectTweetId
+            mailbox.Sender() <! Response(res, status)
+            printfn "User: %s ReTweeted: %d" senderUser subjectTweetId
         | Follow(follower, followed) ->
             printfn "User %s is now following user %s" follower followed
-        | SendReTweet(username, subjectTweetId) ->
-            printfn "User: %s and ReTweeted: %s" username subjectTweetId
         | FindTweets(a) ->
             printf "sdf"
         | ShowData ->
             printfn "%A\n%A\n%A\n%A" globalData.Users globalData.LoggedInUsers globalData.Tweets globalData.Hashtags
+            printfn "%A" globalData.Users.["rajat.rai"].MentionedTweets
         // | _ ->
         //     printfn "server test"
         return! loop()

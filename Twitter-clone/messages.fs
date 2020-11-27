@@ -5,7 +5,7 @@ type ServerApi =
     | SignIn of string * string
     | SignOut of string
     | RegisterTweet of string * string
-    | SendReTweet of string * string
+    | RegisterReTweet of string * string * int
     | Follow of string * string
     | FindTweets of string
     | ShowData 

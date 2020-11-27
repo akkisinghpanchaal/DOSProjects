@@ -6,7 +6,9 @@ module GlobalDataMod
 open UserMod
 open TweetMod
 
+
 type GlobalData() =
+    let mutable tweetAutoIncrement = 1
     let mutable connectedServers = 0
     let mutable users: Map<string, User> = Map.empty
     let mutable tweets: Map<int, Tweet> = Map.empty
@@ -20,26 +22,56 @@ type GlobalData() =
     let privateAddConnectedServers count = 
         connectedServers <- connectedServers + count    
 
-    let privateAddHashtags (tweet: Tweet) = 
+    let addHashtags (tweet: Tweet) = 
         for h in tweet.Hashtags do
             if hashtags.ContainsKey(h) then
                 let updatedIds = Array.append hashtags.[h] [|tweet.Id|]
                 hashtags <- hashtags.Add(h,updatedIds)
             else
                 hashtags <- hashtags.Add(h,[|tweet.Id|])
-        //call private add mentions
 
-    let privateAddTweets (tweet: Tweet) = 
+    let updateMentions (tweet: Tweet) =
+        for mentionedUser in tweet.Mentions do
+            printfn "%s is mentioned in tweet id: %d" mentionedUser tweet.Id
+            if users.ContainsKey mentionedUser then
+                users.[mentionedUser].AddToMentionedTweets(tweet.Id)
+
+    let addTweetToFollowersTimeline (tweet: Tweet) =
+        for follower in users.[tweet.Creator].Followers do
+            users.[follower].AddToTimeline(tweet.Id)
+
+    let addReTweetToOriginalUserTimeline (tweet: Tweet) =
+        users.[tweets.[tweet.ParentTweetId].Creator].AddToTimeline(tweet.Id)
+
+    let privateAddTweet (content: string) (username: string) = 
+        let tweet = Tweet(tweetAutoIncrement,username,content)
+        tweetAutoIncrement <- tweetAutoIncrement + 1
         tweets <- tweets.Add(tweet.Id,tweet)
-        privateAddHashtags tweet
+        users.Item(tweet.Creator).AddToTimeline(tweet.Id)
+        users.Item(username).AddToTweets(tweet.Id)
+        addTweetToFollowersTimeline tweet
+        addHashtags tweet
+        updateMentions tweet
     
+    let privateAddReTweet (content: string) (username: string) (parentTweetId: int) = 
+        let tweet = Tweet(tweetAutoIncrement,username,content, parentTweetId)
+        tweetAutoIncrement <- tweetAutoIncrement + 1
+        tweets <- tweets.Add(tweet.Id,tweet)
+        users.Item(tweet.Creator).AddToTimeline(tweet.Id)
+        users.Item(username).AddToTweets(tweet.Id)
+        addTweetToFollowersTimeline tweet
+        addReTweetToOriginalUserTimeline tweet
+        addHashtags tweet
+        updateMentions tweet
+    
+
     let privateAddUsers (username:string) (userObj: User) = 
         users <- users.Add(username, userObj)
 
-    let markUserLoggedIn (username: string) =
+    let privateMarkUserLoggedIn (username: string) =
         loggedInUsers <- loggedInUsers.Add(username)
 
-    let markUserLoggedOut (username: string) =
+    let privateMarkUserLoggedOut (username: string) =
         loggedInUsers <- loggedInUsers.Remove(username)
     
 // =================== methods =======================
@@ -59,17 +91,20 @@ type GlobalData() =
         with get() = loggedInUsers
 
     member this.AddServers count =
-        privateAddConnectedServers count
+             count
     
     member this.AddUsers count =
         privateAddUsers count
     
-    member this.AddTweet (payload:Tweet) =
-        privateAddTweets payload
+    member this.AddTweet (content:string) (username: string) =
+        privateAddTweet content username
 
+    member this.AddReTweet (content:string) (username: string) (parentTweetId: int) =
+        privateAddReTweet content username parentTweetId
+    
     member this.MarkUserLoggedIn username =
-        markUserLoggedIn username
+        privateMarkUserLoggedIn username
     
     member this.MarkUserLoggedOut username =
-        markUserLoggedOut username
+        privateMarkUserLoggedOut username
 // ----------------------------------------------------------

@@ -28,8 +28,8 @@ let Client (mailbox: Actor<_>) =
             serverActor <! SignUp(id,pwd)
         | Login -> 
             serverActor<! SignIn(id,pwd)
-        | SendTweet(cntnt) ->
-            serverActor<! RegisterTweet(id, cntnt) 
+        | SendTweet(content) ->
+            serverActor<! RegisterTweet(id, content) 
         |FollowUser(username, followed) ->
             serverActor <! FollowUser(username,followed)
         |Response(res,status) -> 

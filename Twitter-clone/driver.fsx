@@ -35,7 +35,7 @@ module DriverMod =
         clientActor2 <! Register("rajat.rai","1234")
         clientActor <! Login
         clientActor2 <! Login
-        clientActor <! SendTweet(randomStr(10))
+        clientActor <! SendTweet("balle balle * 100 #lazymonday @rajat.rai @bodambasanti")
         clientActor <! SendTweet("#1231 @123 @assd")
         clientActor2 <! SendTweet("#1231 #123123 #asdkfmewsdf")
         System.Threading.Thread.Sleep(500)

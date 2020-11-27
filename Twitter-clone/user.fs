@@ -6,18 +6,12 @@ type User(uId: string, password:string) =
     let created = System.DateTime.Now
     // private mutable value
     let mutable followers: Set<string> = Set.empty
-
     let mutable following: Set<string> = Set.empty
-
     let mutable tweets: Set<int> = Set.empty
-
     let mutable timeLine: Set<int> = Set.empty
-
+    let mutable mentionedTweets: Set<int> = Set.empty
     let password = password
     
-    // member this.Login(givenPassword) = 
-    //     if password = givenPassword then
-
     member this.Followers
         with get() = followers
 
@@ -29,6 +23,9 @@ type User(uId: string, password:string) =
     
     member this.Tweets
         with get() = tweets
+
+    member this.MentionedTweets
+        with get() = mentionedTweets
 
     member this.Id = uId
 
@@ -46,6 +43,8 @@ type User(uId: string, password:string) =
     member this.AddToTweets input = 
         tweets <- tweets.Add(input)
 
+    member this.AddToMentionedTweets tweetId = 
+        mentionedTweets <- mentionedTweets.Add(tweetId)
 // // test
 // let instance = User(69)
 // instance.AddToFollowers ["loda";"lassan"] 
