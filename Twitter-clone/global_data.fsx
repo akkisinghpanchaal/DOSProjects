@@ -22,7 +22,6 @@ type GlobalData() =
 
     let privateAddTweets (tweetId:int) (tweet: Tweet) = 
         tweets <- tweets.Add(tweetId,tweet)
-        printfn "Tweet added!!!!!!!!!!!!!"
     
     let privateAddUsers (username:string) (userObj: User) = 
         users <- users.Add(username, userObj)

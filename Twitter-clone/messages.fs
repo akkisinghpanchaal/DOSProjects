@@ -13,6 +13,6 @@ type ServerApi =
 type ClientApi =
     | Login
     | SendTweet of string
-    | Response of string
+    | Response of string * bool
     | Register of string * string
     | FollowUser of string * string

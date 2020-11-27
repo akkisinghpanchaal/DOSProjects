@@ -53,29 +53,29 @@ let userExists (username:string) =
     globalData.Users.ContainsKey username
 
 let signUpUser (username: string) (password: string) = 
-    let mutable signUpStatus = false
+    let mutable response,status = "",false
     if userExists username then
-        printfn "User '%s' already exists in the database." username
+        response <- sprintf "User %s already exists in the database." username
     elif username.Contains " " then
-        printfn "Invalid characters found in username. Use only alphanumeric characters."
+        response <- "Invalid characters found in username. Use only alphanumeric characters."
     else
         // All ok. Create user now.
-        let mutable newUserObj = User(username, password)
+        let newUserObj = User(username, password)
         globalData.AddUsers username newUserObj
-        printfn "Added user %s to the database." username
-        signUpStatus <- true
-    signUpStatus
+        response <- sprintf "Added user %s to the database." username
+        status <- true
+    response,status
 
 let signInUser (username:string) (password: string) =
-    let mutable signInStatus = false
+    let mutable response,status = "",false
     if not (userExists username) then
-        printfn "User %s does not exist in the database." username
+        response <- sprintf "User %s does not exist in the database." username
     elif (globalData.LoggedInUsers.Contains username) then
-        printfn "User %s is already logged in." username
+        response <- sprintf "User %s is already logged in." username
     else
         globalData.MarkUserLoggedIn username
-        signInStatus <- true
-    signInStatus
+        status <- true
+    response,status
 
 let distributeTweet (username: string) (cntnt: string) =
     let mutable response,status = "",false
@@ -86,47 +86,38 @@ let distributeTweet (username: string) (cntnt: string) =
     else
         let tweet = Tweet(tweetAutoIncrement,username,cntnt)
         globalData.AddTweets tweetAutoIncrement tweet
-        response <- "Success"
+        response <- "Tweet registered successfully"
         status<-true
     response,status
 
-let signOutUser (username:string): bool = 
-    let mutable signOutStatus = false
+let signOutUser (username:string) = 
+    let mutable response,status = "",false
     if not (globalData.LoggedInUsers.Contains username) then
-        printfn "User is either not an valid user of not logged in."
+        response<- "User is either not an valid user of not logged in."
     else
         globalData.MarkUserLoggedOut username
-        signOutStatus <- true
-    signOutStatus
+        response<- "User logged out successfully."
+        status <- true
+    response,status
 
 // ------------------------------------------------------------------------------
 
 let Server (mailbox: Actor<_>) =
-    let mutable response:string = ""
     let rec loop() = actor {
         let! msg = mailbox.Receive()
         match msg with
         | SignUp(username,pwd) ->
-            if signUpUser username pwd then
-                response <- "Successfully Signed up User:" + username
-            else
-                response <- "Could not signup user" + username
+            let res,status = signUpUser username pwd
+            mailbox.Sender() <! Response(res,status)
         | SignIn(username, pwd) ->
-            if signInUser username pwd then
-                response <- "Successfully Signed In User: " + username
-            else
-                response <- "Could not signIn user." + username
-            mailbox.Sender() <! Response(response)
+            let res,status = signInUser username pwd
+            mailbox.Sender() <! Response(res,status)
         | SignOut(username) ->
-            if signOutUser username then
-                response <- "Successfully Signed out User:" + username
-            else
-                response <- "Could not sign out user: " + username
-            mailbox.Sender() <! Response(response)
+            let res,status = signOutUser username
+            mailbox.Sender() <! Response(res,status)
         | RegisterTweet(senderUser, content) ->
-            printfn "User: %s and Tweet: %s" senderUser content
             let res,status = distributeTweet senderUser content
-            mailbox.Sender() <! Response(res)
+            mailbox.Sender() <! Response(res,status)
         | Follow(follower, followed) ->
             printfn "User %s is now following user %s" follower followed
         | SendReTweet(username, subjectTweetId) ->

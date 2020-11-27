@@ -16,24 +16,6 @@ open ServerMod
 let system = ActorSystem.Create("Twitter")
 let mutable serverActor = spawn system "server" Server
 
-// let randomStr (n: int) = 
-//     let chars = "abcdefghijklmnopqrstuvwxyz0123456789"
-//     let charsLen = chars.Length
-//     let random = System.Random()
-
-//     fun len -> 
-//         let randomChars = [|for i in 0..len -> chars.[random.Next(charsLen)]|]
-//         System.String(randomChars)
-let randomStr = 
-    // let chars = "ABCDEFGHIJKLMNOPQRSTUVWUXYZ0123456789"
-    let chars = "abcdefghijklmnopqrstuvwxyz0123456789"
-    let charsLen = chars.Length
-    let random = System.Random()
-
-    fun len -> 
-        let randomChars = [|for i in 0..len -> chars.[random.Next(charsLen)]|]
-        System.String(randomChars)
-
 let Client (mailbox: Actor<_>) =
     let mutable id,pwd ="",""
     // let mutable srcdst:Map<String,String> = Map.empty
@@ -46,8 +28,8 @@ let Client (mailbox: Actor<_>) =
             serverActor <! SignUp(id,pwd)
         | Login -> 
             serverActor<! SignIn(id,pwd)
-        | Response(res) -> 
-            printfn "Response from server: %s" res
+        | Response(res,status) -> 
+            printfn "Client: %s %b" res status
         | SendTweet(cntnt) ->
             serverActor<! RegisterTweet(id, cntnt) 
         |_ ->
