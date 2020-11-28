@@ -32,8 +32,8 @@ type GlobalData() =
 
     let updateMentions (tweet: Tweet) =
         for mentionedUser in tweet.Mentions do
-            printfn "%s is mentioned in tweet id: %d" mentionedUser tweet.Id
             if users.ContainsKey mentionedUser then
+                printfn "%s is mentioned in tweet id: %d" mentionedUser tweet.Id
                 users.[mentionedUser].AddToMentionedTweets(tweet.Id)
 
     let addTweetToFollowersTimeline (tweet: Tweet) =

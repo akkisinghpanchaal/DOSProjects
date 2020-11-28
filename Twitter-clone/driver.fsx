@@ -1,6 +1,6 @@
 #load @"user.fs"
 #load @"tweet.fs"
-#load @"messages.fs"
+#load @"custom_types.fs"
 #load @"server.fsx"
 #load @"client.fsx"
 
@@ -8,7 +8,7 @@
 #r "nuget: Akka.TestKit" 
 
 
-open ApiMsgs
+open CustomTypesMod
 open System
 open ClientMod
 open Akka.FSharp
@@ -41,6 +41,7 @@ module DriverMod =
         clientActor2 <! FollowUser("akkisingh")
         clientActor <! FollowUser("rajat.rai")
         clientActor <! SendReTweet("@akkisingh ki gaand me danda", 1)
+        clientActor <! 
 
         System.Threading.Thread.Sleep(500)
         serverActor <! ShowData

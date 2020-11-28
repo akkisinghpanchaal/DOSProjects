@@ -1,16 +1,15 @@
 module ClientMod
 
-#load @"messages.fs"
+#load @"custom_types.fs"
 #load @"server.fsx"
 
 #r "nuget: Akka.FSharp" 
 #r "nuget: Akka.TestKit" 
 
-open ApiMsgs
+open CustomTypesMod
 open Akka.Actor
 open Akka.FSharp
 open System
-open ApiMsgs
 open ServerMod
 
 let system = ActorSystem.Create("Twitter")
@@ -34,8 +33,8 @@ let Client (mailbox: Actor<_>) =
             serverActor<! RegisterReTweet(id, content, retweetId) 
         |FollowUser(followed) ->
             serverActor <! Follow(id,followed)
-        |Response(res,status) -> 
-            printfn "Server: %s %b" res status
+        |Response(response) -> 
+            printfn "Server: %s %b %A" res status data
         return! loop()
     }
     loop()

@@ -1,6 +1,6 @@
 module ServerMod
 
-#load @"messages.fs"
+#load @"custom_types.fs"
 #load @"user.fs"
 #load @"tweet.fs"
 #load @"global_data.fsx"
@@ -9,7 +9,7 @@ module ServerMod
 #r "nuget: Akka.TestKit" 
 
 open Akka.FSharp
-open ApiMsgs
+open CustomTypesMod
 open GlobalDataMod
 open UserMod
 
@@ -47,7 +47,7 @@ let userExists (username:string) =
     globalData.Users.ContainsKey username
 
 let signUpUser (username: string) (password: string) = 
-    let mutable response,status = "",false
+    let mutable response, status, data = "", false, None
     if userExists username then
         response <- sprintf "User %s already exists in the database." username
     elif username.Contains " " then
@@ -58,10 +58,10 @@ let signUpUser (username: string) (password: string) =
         globalData.AddUsers username newUserObj
         response <- sprintf "Added user %s to the database." username
         status <- true
-    response,status
+    ApiResponse(response, status, data)
 
 let signInUser (username:string) (password: string) =
-    let mutable response,status = "",false
+    let mutable response, status, data = "", false, None
     if not (userExists username) then
         response <- sprintf "User %s does not exist in the database." username
     elif (globalData.LoggedInUsers.Contains username) then
@@ -70,11 +70,11 @@ let signInUser (username:string) (password: string) =
         globalData.MarkUserLoggedIn username
         response <- sprintf "User %s logged in." username
         status <- true
-    response,status
+    ApiResponse(response, status, data)
 
 
 let distributeTweet (username: string) (content: string) (isRetweeted: bool) (parentTweetId: int) =
-    let mutable response,status = "",false
+    let mutable response, status, data = "", false, None
     if not (userExists username) then
         response <- "Error: User " + username + " does not exist in the database."
     elif not (globalData.LoggedInUsers.Contains username) then
@@ -88,27 +88,65 @@ let distributeTweet (username: string) (content: string) (isRetweeted: bool) (pa
             globalData.AddReTweet content username parentTweetId
             response <- "ReTweet registered successfully"
         status<-true
-    response,status
+    ApiResponse(response, status, data)
 
 
 let signOutUser (username:string) = 
-    let mutable response,status = "",false
+    let mutable response, status, data = "", false, None
     if not (globalData.LoggedInUsers.Contains username) then
         response<- "User is either not an valid user of not logged in."
     else
         globalData.MarkUserLoggedOut username
         response<- "User logged out successfully."
         status <- true
-    response,status
+    ApiResponse(response, status, data)
 
 let followAccount (followerUsername: string) (followedUsername: string) =
-    let mutable response, status = "",false
+    let mutable response, status, data = "", false, None
     globalData.Users.[followedUsername].AddToFollowers(followerUsername)
     globalData.Users.[followerUsername].AddToFollowings(followedUsername)
     response <- "User " + followerUsername + " started following user " + followedUsername
     status <- true
-    response,status
+    ApiResponse(response, status, data)
 
+
+let findTweets (username: string) (searchTerm: string) (searchType: QueryType) =
+    let mutable response, status= "", false
+    match searchType with
+    | QueryType.Hashtag ->
+        let data = List.ofSeq [for tweetId in globalData.Hashtags.[searchTerm] do yield globalData.Tweets.[tweetId]]
+        status <- true
+        response <- "Successfully retrieved " + string data.Length + " tweets."
+        ApiResponse(response, status, data)
+    | QueryType.MyMentions ->
+        if (globalData.Users.ContainsKey username) && (globalData.LoggedInUsers.Contains username) then
+            status <- true
+            let data = List.ofSeq [for tweetId in globalData.Users.[username].MentionedTweets do yield globalData.Tweets.[tweetId]]
+            response <- "Successfully retrieved " + string data.Length + " tweets."
+            ApiResponse(response, status, data)
+        elif not (globalData.LoggedInUsers.Contains username) then
+            status <- false
+            response <- "User " + username + " is not logged in."
+            ApiResponse(response, status)
+        else
+            status <- false
+            response <-"User " + username + " does not exist in the database."
+            ApiResponse(response, status)
+    | QueryType.Subscribed ->
+        if (globalData.Users.ContainsKey username) && (globalData.LoggedInUsers.Contains username) then
+            status <- true
+            let data = List.ofSeq [for tweetId in globalData.Users.[username].Tweets do yield globalData.Tweets.[tweetId]]
+            response <- "Successfully retrieved " + string data.Length + " tweets."
+            ApiResponse(response, status, data)
+        elif not (globalData.LoggedInUsers.Contains username) then
+            status <- false
+            response <- "User " + username + " is not logged in."
+            ApiResponse(response, status)
+        else
+            status <- false
+            response <-"User " + username + " does not exist in the database."
+            ApiResponse(response, status)
+    
 // ------------------------------------------------------------------------------
 
 let Server (mailbox: Actor<_>) =
@@ -116,25 +154,28 @@ let Server (mailbox: Actor<_>) =
         let! msg = mailbox.Receive()
         match msg with
         | SignUp(username,pwd) ->
-            let res,status = signUpUser username pwd
-            mailbox.Sender() <! Response(res,status)
+            let response = signUpUser username pwd
+            mailbox.Sender() <! Response(response)
         | SignIn(username, pwd) ->
-            let res,status = signInUser username pwd
-            mailbox.Sender() <! Response(res,status)
+            let response = signInUser username pwd
+            mailbox.Sender() <! Response(response)
         | SignOut(username) ->
-            let res,status = signOutUser username
-            mailbox.Sender() <! Response(res,status)
+            let response = signOutUser username
+            mailbox.Sender() <! Response(response)
         | RegisterTweet(senderUser, content) ->
-            let res,status = distributeTweet senderUser content false -1
-            mailbox.Sender() <! Response(res,status)
+            let response = distributeTweet senderUser content false -1
+            mailbox.Sender() <! Response(response)
         | RegisterReTweet(senderUser, content, subjectTweetId) ->
-            let res, status = distributeTweet senderUser content true subjectTweetId
-            mailbox.Sender() <! Response(res, status)
+            let response = distributeTweet senderUser content true subjectTweetId
+            mailbox.Sender() <! Response(response)
             printfn "User: %s ReTweeted: %d" senderUser subjectTweetId
         | Follow(follower, followed) ->
+            let response = followAccount follower followed
+            mailbox.Sender() <! Response(response)
             printfn "User %s is now following user %s" follower followed
-        | FindTweets(a) ->
-            printf "sdf"
+        | FindTweets(username, searchTerm, queryType) ->
+            let response = findTweets username searchTerm queryType
+            mailbox.Sender() <! Response(response)
         | ShowData ->
             printfn "%A\n%A\n%A\n%A" globalData.Users globalData.LoggedInUsers globalData.Tweets globalData.Hashtags
             printfn "%A" globalData.Users.["rajat.rai"].MentionedTweets
