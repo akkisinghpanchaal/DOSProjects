@@ -1,6 +1,6 @@
 module ClientMod
 
-#load @"custom_types.fs"
+#load @"custom_types.fsx"
 #load @"server.fsx"
 #load @"tweet.fs"
 
@@ -37,11 +37,13 @@ let Client (mailbox: Actor<_>) =
             serverActor <! Follow(id,followed)
         | GetTweets(username, searchTerm, queryType) ->
             serverActor <! FindTweets(username, searchTerm, queryType)
-        |Response(response) -> 
+        | Response(response) -> 
             printfn "Server: %s %b" response.Response response.Status
-            // if response.Data != null then
             printfn "%A" response.Data
-                // for row in response.Data do
+        | DataResponse(response) ->
+            for row in response.Data do
+                printfn "Tweet Id: %d\nContent: %s\nParent: %d\nCreator: %s" row.Id row.Content row.ParentTweetId row.Creator
+            // if response.Data.Length > 0 then
                 // response.Data |>  List.iter (fun row -> printfn "Tweet Id: %d\nContent: %s\nParent: %d\nCreator: %s" row.Id row.Content row.ParentTweetId row.Creator)
         return! loop()
     }

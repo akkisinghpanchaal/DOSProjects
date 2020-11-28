@@ -1,6 +1,6 @@
 module ServerMod
 
-#load @"custom_types.fs"
+#load @"custom_types.fsx"
 #load @"user.fs"
 #load @"tweet.fs"
 #load @"global_data.fsx"
@@ -12,6 +12,8 @@ open Akka.FSharp
 open CustomTypesMod
 open GlobalDataMod
 open UserMod
+open TweetMod
+open System
 
 let mutable globalData = GlobalData()
 
@@ -43,11 +45,12 @@ let mutable globalData = GlobalData()
 //     userAutoIncrement <- userAutoIncrement + 1
 //     userAutoIncrement
 
+
 let userExists (username:string) = 
     globalData.Users.ContainsKey username
 
 let signUpUser (username: string) (password: string) = 
-    let mutable response, status, data = "", false, None
+    let mutable response, status = "", false
     if userExists username then
         response <- sprintf "User %s already exists in the database." username
     elif username.Contains " " then
@@ -58,10 +61,10 @@ let signUpUser (username: string) (password: string) =
         globalData.AddUsers username newUserObj
         response <- sprintf "Added user %s to the database." username
         status <- true
-    ApiResponse(response, status, data)
+    ApiResponse(response, status)
 
 let signInUser (username:string) (password: string) =
-    let mutable response, status, data = "", false, None
+    let mutable response, status = "", false
     if not (userExists username) then
         response <- sprintf "User %s does not exist in the database." username
     elif (globalData.LoggedInUsers.Contains username) then
@@ -70,11 +73,11 @@ let signInUser (username:string) (password: string) =
         globalData.MarkUserLoggedIn username
         response <- sprintf "User %s logged in." username
         status <- true
-    ApiResponse(response, status, data)
+    ApiResponse(response, status)
 
 
 let distributeTweet (username: string) (content: string) (isRetweeted: bool) (parentTweetId: int) =
-    let mutable response, status, data = "", false, None
+    let mutable response, status = "", false
     if not (userExists username) then
         response <- "Error: User " + username + " does not exist in the database."
     elif not (globalData.LoggedInUsers.Contains username) then
@@ -88,64 +91,67 @@ let distributeTweet (username: string) (content: string) (isRetweeted: bool) (pa
             globalData.AddReTweet content username parentTweetId
             response <- "ReTweet registered successfully"
         status<-true
-    ApiResponse(response, status, data)
+    ApiResponse(response, status)
 
 
 let signOutUser (username:string) = 
-    let mutable response, status, data = "", false, None
+    let mutable response, status = "", false
     if not (globalData.LoggedInUsers.Contains username) then
         response<- "User is either not an valid user of not logged in."
     else
         globalData.MarkUserLoggedOut username
         response<- "User logged out successfully."
         status <- true
-    ApiResponse(response, status, data)
+    ApiResponse(response, status)
 
 let followAccount (followerUsername: string) (followedUsername: string) =
-    let mutable response, status, data = "", false, None
+    let mutable response, status = "", false
     globalData.Users.[followedUsername].AddToFollowers(followerUsername)
     globalData.Users.[followerUsername].AddToFollowings(followedUsername)
     response <- "User " + followerUsername + " started following user " + followedUsername
     status <- true
-    ApiResponse(response, status, data)
+    ApiResponse(response, status)
 
 
 let findTweets (username: string) (searchTerm: string) (searchType: QueryType) =
-    let mutable response, status= "", false
+    let mutable response, status = "", false
     match searchType with
     | QueryType.Hashtag ->
-        let data = List.ofSeq [for tweetId in globalData.Hashtags.[searchTerm] do yield globalData.Tweets.[tweetId]]
+        let dataList: Tweet list = [for tweetId in globalData.Hashtags.[searchTerm] do yield globalData.Tweets.[tweetId]]
+        let data: Tweet array = Array.ofList dataList
         status <- true
         response <- "Successfully retrieved " + string data.Length + " tweets."
-        ApiResponse(response, status, data)
+        ApiDataResponse(response, status, data)
     | QueryType.MyMentions ->
         if (globalData.Users.ContainsKey username) && (globalData.LoggedInUsers.Contains username) then
             status <- true
-            let data = List.ofSeq [for tweetId in globalData.Users.[username].MentionedTweets do yield globalData.Tweets.[tweetId]]
+            let dataList: Tweet list = [for tweetId in globalData.Users.[username].MentionedTweets do yield globalData.Tweets.[tweetId]]
+            let data: Tweet array = Array.ofList dataList
             response <- "Successfully retrieved " + string data.Length + " tweets."
-            ApiResponse(response, status, data)
+            ApiDataResponse(response, status, data)
         elif not (globalData.LoggedInUsers.Contains username) then
             status <- false
             response <- "User " + username + " is not logged in."
-            ApiResponse(response, status)
+            ApiDataResponse(response, status, [||])
         else
             status <- false
             response <-"User " + username + " does not exist in the database."
-            ApiResponse(response, status)
+            ApiDataResponse(response, status, [||])
     | QueryType.Subscribed ->
         if (globalData.Users.ContainsKey username) && (globalData.LoggedInUsers.Contains username) then
             status <- true
-            let data = List.ofSeq [for tweetId in globalData.Users.[username].Tweets do yield globalData.Tweets.[tweetId]]
+            let dataList: Tweet list = [for tweetId in globalData.Users.[username].Tweets do yield globalData.Tweets.[tweetId]]
+            let data: Tweet array = Array.ofList dataList
             response <- "Successfully retrieved " + string data.Length + " tweets."
-            ApiResponse(response, status, data)
+            ApiDataResponse(response, status, data)
         elif not (globalData.LoggedInUsers.Contains username) then
             status <- false
             response <- "User " + username + " is not logged in."
-            ApiResponse(response, status)
+            ApiDataResponse(response, status, [||])
         else
             status <- false
             response <-"User " + username + " does not exist in the database."
-            ApiResponse(response, status)
+            ApiDataResponse(response, status, [||])
     
 // ------------------------------------------------------------------------------
 

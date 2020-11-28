@@ -1,6 +1,6 @@
 #load @"user.fs"
 #load @"tweet.fs"
-#load @"custom_types.fs"
+#load @"custom_types.fsx"
 #load @"server.fsx"
 #load @"client.fsx"
 
