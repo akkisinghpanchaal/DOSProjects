@@ -39,4 +39,4 @@ type ClientApi =
     | Response of ApiResponse
     | Register of string * string
     | FollowUser of string
-    | GetTweets of string * QueryType
+    | GetTweets of string * string * QueryType
