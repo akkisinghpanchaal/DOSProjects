@@ -36,6 +36,9 @@ type GlobalData() =
                 printfn "%s is mentioned in tweet id: %d" mentionedUser tweet.Id
                 users.[mentionedUser].AddToMentionedTweets(tweet.Id)
 
+    let privateIsUserLoggedIn (username: string) =
+        loggedInUsers.Contains username
+
     let addTweetToFollowersTimeline (tweet: Tweet) =
         for follower in users.[tweet.Creator].Followers do
             users.[follower].AddToTimeline(tweet.Id)
@@ -43,7 +46,7 @@ type GlobalData() =
     let addReTweetToOriginalUserTimeline (tweet: Tweet) =
         users.[tweets.[tweet.ParentTweetId].Creator].AddToTimeline(tweet.Id)
 
-    let privateAddTweet (content: string) (username: string) = 
+    let privateAddTweet (content: string) (username: string): int = 
         let tweet = Tweet(tweetAutoIncrement,username,content)
         tweetAutoIncrement <- tweetAutoIncrement + 1
         tweets <- tweets.Add(tweet.Id,tweet)
@@ -52,8 +55,9 @@ type GlobalData() =
         addTweetToFollowersTimeline tweet
         addHashtags tweet
         updateMentions tweet
+        tweet.Id
     
-    let privateAddReTweet (content: string) (username: string) (parentTweetId: int) = 
+    let privateAddReTweet (content: string) (username: string) (parentTweetId: int): int = 
         let tweet = Tweet(tweetAutoIncrement,username,content, parentTweetId)
         tweetAutoIncrement <- tweetAutoIncrement + 1
         tweets <- tweets.Add(tweet.Id,tweet)
@@ -63,7 +67,7 @@ type GlobalData() =
         addReTweetToOriginalUserTimeline tweet
         addHashtags tweet
         updateMentions tweet
-    
+        tweet.Id
 
     let privateAddUsers (username:string) (userObj: User) = 
         users <- users.Add(username, userObj)
@@ -107,4 +111,7 @@ type GlobalData() =
     
     member this.MarkUserLoggedOut username =
         privateMarkUserLoggedOut username
+    
+    member this.IsUserLoggedIn (username: string): bool = 
+        privateIsUserLoggedIn username
 // ----------------------------------------------------------

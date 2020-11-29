@@ -41,7 +41,10 @@ let Client (mailbox: Actor<_>) =
             printfn "Server: %s %b" response.Response response.Status
         | DataResponse(response) ->
             for user, tweet in response.Data do
-                printfn "Tweets: %s %s" user tweet
+                printfn "Tweet by: %s\nTweet text: %s" user tweet
+            printfn "============================================="
+        | Feed(tweetCreator, tweetContent) ->
+            printfn "Activity @%s: %s just tweeted || %s." id tweetCreator tweetContent
                 // printfn "Tweet Id: %d\nContent: %s\nParent: %d\nCreator: %s" row.Id row.Content row.ParentTweetId row.Creator
             // if response.Data.Length > 0 then
                 // response.Data |>  List.iter (fun row -> printfn "Tweet Id: %d\nContent: %s\nParent: %d\nCreator: %s" row.Id row.Content row.ParentTweetId row.Creator)

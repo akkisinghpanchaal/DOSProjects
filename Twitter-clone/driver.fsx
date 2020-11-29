@@ -38,13 +38,19 @@ module DriverMod =
         clientActor <! SendTweet("balle balle * 100 #lazymonday @rajat.rai @bodambasanti")
         clientActor <! SendTweet("#1231 @123 @assd")
         clientActor2 <! SendTweet("#1231 #123123 #asdkfmewsdf")
+        System.Threading.Thread.Sleep(1000)
         clientActor2 <! FollowUser("akkisingh")
         clientActor <! FollowUser("rajat.rai")
-        clientActor <! SendReTweet("@akkisingh ki gaand me danda", 1)
+        clientActor <! SendReTweet("@akkisingh is a good boy", 1)
+        clientActor2 <! SendTweet("@rajat.rai is also a good boy!")
+        clientActor2 <! SendTweet("@akkisingh is of age 25")
+        clientActor2 <! SendTweet("@akkisingh likes to play badminton.")
+        clientActor2 <! SendTweet("@akkisingh bahar chalega ghumne??")
         clientActor <! GetTweets("asdkfmewsdf", Hashtag)
+        clientActor <! GetTweets("rajat.rai", MyMentions)
+        clientActor <! GetTweets("rajat.rai", Subscribed)
         // System.Threading.Thread.Sleep(500)
         // serverActor <! ShowData
-
 
     main(Environment.GetCommandLineArgs())
     System.Console.ReadKey() |> ignore

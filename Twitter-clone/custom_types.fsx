@@ -57,3 +57,4 @@ type ClientApi =
     | Register of string * string
     | FollowUser of string
     | GetTweets of string * QueryType
+    | Feed of string * string

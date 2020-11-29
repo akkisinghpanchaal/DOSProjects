@@ -9,6 +9,7 @@ module ServerMod
 #r "nuget: Akka.TestKit" 
 
 open Akka.FSharp
+open Akka.Actor
 open CustomTypesMod
 open GlobalDataMod
 open UserMod
@@ -49,6 +50,9 @@ let mutable globalData = GlobalData()
 let userExists (username:string) = 
     globalData.Users.ContainsKey username
 
+let checkUserLoggedIn (username: string) =
+    globalData.IsUserLoggedIn username
+
 let signUpUser (username: string) (password: string) = 
     let mutable response, status = "", false
     if userExists username then
@@ -75,9 +79,15 @@ let signInUser (username:string) (password: string) =
         status <- true
     ApiResponse(response, status)
 
+// let notifyFollowers (tweetID:int) clientMap = 
+//     let tweet = globalData.Tweets.[tweetID]
+//     let followers = globalData.Users.[tweet.Creator].Followers
+//     for follower in followers do
+//         if globa: Map<string, IActorRef>lData.IsUserLoggedIn follower then
+//             clientMap.[follower] <! Feed(tweet)
 
 let distributeTweet (username: string) (content: string) (isRetweeted: bool) (parentTweetId: int) =
-    let mutable response, status = "", false
+    let mutable response, status, tweetID = "", false, -1
     if not (userExists username) then
         response <- "Error: User " + username + " does not exist in the database."
     elif not (globalData.LoggedInUsers.Contains username) then
@@ -85,14 +95,13 @@ let distributeTweet (username: string) (content: string) (isRetweeted: bool) (pa
     else
         // printfn "Tweet Info %d %A %A" tweet.Id tweet.Mentions tweet.Hashtags
         if not isRetweeted then
-            globalData.AddTweet content username
+            tweetID <- globalData.AddTweet content username
             response <- "Tweet registered successfully"
         else
-            globalData.AddReTweet content username parentTweetId
+            tweetID <- globalData.AddReTweet content username parentTweetId
             response <- "ReTweet registered successfully"
         status<-true
-    ApiResponse(response, status)
-
+    ApiResponse(response, status), tweetID
 
 let signOutUser (username:string) = 
     let mutable response, status = "", false
@@ -153,6 +162,7 @@ let findTweets (username: string) (searchTerm: string) (searchType: QueryType) =
 // ------------------------------------------------------------------------------
 
 let Server (mailbox: Actor<_>) =
+    let mutable loggedInUserToClientMap: Map<string, IActorRef> = Map.empty
     let rec loop() = actor {
         let! msg = mailbox.Receive()
         match msg with
@@ -161,15 +171,33 @@ let Server (mailbox: Actor<_>) =
             mailbox.Sender() <! Response(response)
         | SignIn(username, pwd) ->
             let response = signInUser username pwd
+            if response.Status then
+                loggedInUserToClientMap <- loggedInUserToClientMap.Add(username, mailbox.Sender())
             mailbox.Sender() <! Response(response)
         | SignOut(username) ->
             let response = signOutUser username
+            if response.Status then
+                loggedInUserToClientMap <- loggedInUserToClientMap.Remove(username)
             mailbox.Sender() <! Response(response)
         | RegisterTweet(senderUser, content) ->
-            let response = distributeTweet senderUser content false -1
+            let response, tweetID = distributeTweet senderUser content false -1
+            if response.Status then
+                // notifyFollowers (tweetID, loggedInUserToClientMap)
+                let tweet = globalData.Tweets.[tweetID]
+                let followers = globalData.Users.[tweet.Creator].Followers
+                for follower in followers do
+                    if globalData.IsUserLoggedIn follower then
+                        loggedInUserToClientMap.[follower] <! Feed(tweet.Creator, tweet.Content)
             mailbox.Sender() <! Response(response)
         | RegisterReTweet(senderUser, content, subjectTweetId) ->
-            let response = distributeTweet senderUser content true subjectTweetId
+            let response, tweetID = distributeTweet senderUser content true subjectTweetId
+            if response.Status then
+                // notifyFollowers (tweetID, loggedInUserToClientMap)
+                let tweet = globalData.Tweets.[tweetID]
+                let followers = globalData.Users.[tweet.Creator].Followers
+                for follower in followers do
+                    if globalData.IsUserLoggedIn follower then
+                        loggedInUserToClientMap.[follower] <! Feed(tweet.Creator, tweet.Content)
             mailbox.Sender() <! Response(response)
             printfn "User: %s ReTweeted: %d" senderUser subjectTweetId
         | Follow(follower, followed) ->
