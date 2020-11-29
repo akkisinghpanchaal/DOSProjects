@@ -41,9 +41,9 @@ module DriverMod =
         clientActor2 <! FollowUser("akkisingh")
         clientActor <! FollowUser("rajat.rai")
         clientActor <! SendReTweet("@akkisingh ki gaand me danda", 1)
-        clientActor <! GetTweets("rajat.rai", "asdkfmewsdf", Hashtag)
-        System.Threading.Thread.Sleep(500)
-        serverActor <! ShowData
+        clientActor <! GetTweets("asdkfmewsdf", Hashtag)
+        // System.Threading.Thread.Sleep(500)
+        // serverActor <! ShowData
 
 
     main(Environment.GetCommandLineArgs())

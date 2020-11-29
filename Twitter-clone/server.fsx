@@ -117,16 +117,15 @@ let findTweets (username: string) (searchTerm: string) (searchType: QueryType) =
     let mutable response, status = "", false
     match searchType with
     | QueryType.Hashtag ->
-        let dataList: Tweet list = [for tweetId in globalData.Hashtags.[searchTerm] do yield globalData.Tweets.[tweetId]]
-        let data: Tweet array = Array.ofList dataList
+        let data  = [|for tweetId in globalData.Hashtags.[searchTerm] do yield (globalData.Tweets.[tweetId].Creator ,globalData.Tweets.[tweetId].Content)|]
         status <- true
+        printfn "here %A" data
         response <- "Successfully retrieved " + string data.Length + " tweets."
         ApiDataResponse(response, status, data)
     | QueryType.MyMentions ->
         if (globalData.Users.ContainsKey username) && (globalData.LoggedInUsers.Contains username) then
             status <- true
-            let dataList: Tweet list = [for tweetId in globalData.Users.[username].MentionedTweets do yield globalData.Tweets.[tweetId]]
-            let data: Tweet array = Array.ofList dataList
+            let data = [|for tweetId in globalData.Users.[username].MentionedTweets do yield (globalData.Tweets.[tweetId].Creator ,globalData.Tweets.[tweetId].Content)|]
             response <- "Successfully retrieved " + string data.Length + " tweets."
             ApiDataResponse(response, status, data)
         elif not (globalData.LoggedInUsers.Contains username) then
@@ -140,8 +139,7 @@ let findTweets (username: string) (searchTerm: string) (searchType: QueryType) =
     | QueryType.Subscribed ->
         if (globalData.Users.ContainsKey username) && (globalData.LoggedInUsers.Contains username) then
             status <- true
-            let dataList: Tweet list = [for tweetId in globalData.Users.[username].Tweets do yield globalData.Tweets.[tweetId]]
-            let data: Tweet array = Array.ofList dataList
+            let data = [|for tweetId in globalData.Users.[username].Tweets do yield (globalData.Tweets.[tweetId].Creator ,globalData.Tweets.[tweetId].Content)|]
             response <- "Successfully retrieved " + string data.Length + " tweets."
             ApiDataResponse(response, status, data)
         elif not (globalData.LoggedInUsers.Contains username) then
@@ -152,7 +150,6 @@ let findTweets (username: string) (searchTerm: string) (searchType: QueryType) =
             status <- false
             response <-"User " + username + " does not exist in the database."
             ApiDataResponse(response, status, [||])
-    
 // ------------------------------------------------------------------------------
 
 let Server (mailbox: Actor<_>) =
@@ -181,7 +178,7 @@ let Server (mailbox: Actor<_>) =
             printfn "User %s is now following user %s" follower followed
         | FindTweets(username, searchTerm, queryType) ->
             let response = findTweets username searchTerm queryType
-            mailbox.Sender() <! Response(response)
+            mailbox.Sender() <! DataResponse(response)
         | ShowData ->
             printfn "%A\n%A\n%A\n%A" globalData.Users globalData.LoggedInUsers globalData.Tweets globalData.Hashtags
             printfn "%A" globalData.Users.["rajat.rai"].MentionedTweets

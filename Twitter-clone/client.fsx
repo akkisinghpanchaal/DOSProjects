@@ -35,14 +35,14 @@ let Client (mailbox: Actor<_>) =
             serverActor<! RegisterReTweet(id, content, retweetId) 
         | FollowUser(followed) ->
             serverActor <! Follow(id,followed)
-        | GetTweets(username, searchTerm, queryType) ->
-            serverActor <! FindTweets(username, searchTerm, queryType)
+        | GetTweets(searchTerm, queryType) ->
+            serverActor <! FindTweets(id, searchTerm, queryType)
         | Response(response) -> 
             printfn "Server: %s %b" response.Response response.Status
-            printfn "%A" response.Data
         | DataResponse(response) ->
-            for row in response.Data do
-                printfn "Tweet Id: %d\nContent: %s\nParent: %d\nCreator: %s" row.Id row.Content row.ParentTweetId row.Creator
+            for user, tweet in response.Data do
+                printfn "Tweets: %s %s" user tweet
+                // printfn "Tweet Id: %d\nContent: %s\nParent: %d\nCreator: %s" row.Id row.Content row.ParentTweetId row.Creator
             // if response.Data.Length > 0 then
                 // response.Data |>  List.iter (fun row -> printfn "Tweet Id: %d\nContent: %s\nParent: %d\nCreator: %s" row.Id row.Content row.ParentTweetId row.Creator)
         return! loop()

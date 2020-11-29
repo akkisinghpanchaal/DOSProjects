@@ -22,7 +22,7 @@ type ApiResponse(response: string, status: bool) =
         with get() = responseStatus
     
 
-type ApiDataResponse(response: string, status: bool, data: Tweet array) =
+type ApiDataResponse(response: string, status: bool, data: array<string * string>) =
     let responseMsg = response
     let responseStatus = status
     let responseData = data
@@ -56,4 +56,4 @@ type ClientApi =
     | DataResponse of ApiDataResponse
     | Register of string * string
     | FollowUser of string
-    | GetTweets of string * string * QueryType
+    | GetTweets of string * QueryType
