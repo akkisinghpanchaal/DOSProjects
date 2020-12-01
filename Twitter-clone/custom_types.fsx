@@ -4,38 +4,24 @@ module CustomTypesMod
 open TweetMod
 
 type QueryType = 
-    | Hashtag
     | MyMentions
     | Subscribed
 
-type ApiResponse(response: string, status: bool) =
-    let responseMsg = response
-    let responseStatus = status
-    // let mutable responseData: Option<List<Tweet>> = match data with
-    //                             | Some x -> x
-    //                             | None -> null
+type ApiResponse = struct
+    val Msg : string
+    val Status : bool
+   
+    new (msg,status)=
+        {Msg=msg;Status=status;}
+end
 
-    member this.Response
-        with get() = responseMsg
-
-    member this.Status
-        with get() = responseStatus
-    
-
-type ApiDataResponse(response: string, status: bool, data: array<string * string>) =
-    let responseMsg = response
-    let responseStatus = status
-    let responseData = data
-
-    member this.Response
-        with get() = responseMsg
-
-    member this.Status
-        with get() = responseStatus
-    
-    member this.Data
-        with get() = responseData
-
+type ApiDataResponse = struct
+    val Msg : string
+    val Status : bool
+    val Data : array<string * string>
+    new (msg,status,data)=
+        {Msg=msg;Status=status;Data=data;}
+end
 
 type ServerApi = 
     | SignUp of string * string
@@ -44,17 +30,22 @@ type ServerApi =
     | RegisterTweet of string * string
     | RegisterReTweet of string * string * int
     | Follow of string * string
-    | FindTweets of string * string * QueryType
+    | FindMentions of string 
+    | FindSubscribed of string
+    | FindHashtags of string * string
     | ShowData 
 
 
 type ClientApi =
     | Login
+    | Logout
+    | GetMentions
+    | GetSubscribed
+    | GetHashtags of string
     | SendTweet of string
     | SendReTweet of string * int
     | Response of ApiResponse
     | DataResponse of ApiDataResponse
     | Register of string * string
     | FollowUser of string
-    | GetTweets of string * QueryType
-    | Feed of string * string
+    | LiveFeed of string * string

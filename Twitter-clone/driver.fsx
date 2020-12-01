@@ -36,19 +36,27 @@ module DriverMod =
         clientActor <! Login
         clientActor2 <! Login
         clientActor <! SendTweet("balle balle * 100 #lazymonday @rajat.rai @bodambasanti")
+        System.Threading.Thread.Sleep(1000)
         clientActor <! SendTweet("#1231 @123 @assd")
+        System.Threading.Thread.Sleep(1000)
         clientActor2 <! SendTweet("#1231 #123123 #asdkfmewsdf")
         System.Threading.Thread.Sleep(1000)
         clientActor2 <! FollowUser("akkisingh")
+        System.Threading.Thread.Sleep(1000)
         clientActor <! FollowUser("rajat.rai")
-        clientActor <! SendReTweet("@akkisingh is a good boy", 1)
-        clientActor2 <! SendTweet("@rajat.rai is also a good boy!")
-        clientActor2 <! SendTweet("@akkisingh is of age 25")
-        clientActor2 <! SendTweet("@akkisingh likes to play badminton.")
-        clientActor2 <! SendTweet("@akkisingh bahar chalega ghumne??")
-        clientActor <! GetTweets("asdkfmewsdf", Hashtag)
-        clientActor <! GetTweets("rajat.rai", MyMentions)
-        clientActor <! GetTweets("rajat.rai", Subscribed)
+        // clientActor <! SendReTweet("@akkisingh is a good boy", 1)
+        // clientActor2 <! SendTweet("@rajat.rai is also a good boy!")
+        // clientActor2 <! SendTweet("@akkisingh is of age 25")
+        // clientActor2 <! SendTweet("@akkisingh likes to play badminton.")
+        // clientActor2 <! SendTweet("@akkisingh bahar chalega ghumne??")
+        // clientActor <! GetHashtags("asdkfmewsdf")
+        // clientActor <! GetMentions
+        // clientActor <! GetSubscribed
+        // clientActor2 <! GetHashtags("asdkfmewsdf")
+        // clientActor2 <! GetMentions
+        // clientActor2 <! GetSubscribed
+        // clientActor <! Logout
+        // clientActor2 <! Logout
         // System.Threading.Thread.Sleep(500)
         // serverActor <! ShowData
 

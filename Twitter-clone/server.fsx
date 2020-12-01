@@ -18,35 +18,6 @@ open System
 
 let mutable globalData = GlobalData()
 
-// let DataHandler (mailbox: Actor<_>) =
-//     let mutable srcdst:Map<String,String> = Map.empty
-//     let rec loop() = actor {
-//         let! msg = mailbox.Receive()
-//         match msg with
-//         | SignUp(username,pwd) ->
-//             printfn" Aa gaya customer %s %s\n" username pwd
-//         | SignIn(username, pwd) ->
-//             printfn "Logged in %s %s" username pwd
-//         | Tweet(username, content) ->
-//             printfn "User: %s and Tweet: %s" username content
-//         | Follow(follower, followed)
-//             printfn "User %s is now following user %s" follower followed
-//         | Retweet(username, subjectTweetId)
-//             printfn "User: %s and ReTweeted: %s" username subjectTweetId
-//         | FindTweets()
-//         |_ ->
-//             printfn "server test"
-//         return! loop()
-    // }
-    // loop()
-
-// ==================== Helper Methods for Server ===============================
-
-// let generateNewUserId() = 
-//     userAutoIncrement <- userAutoIncrement + 1
-//     userAutoIncrement
-
-
 let userExists (username:string) = 
     globalData.Users.ContainsKey username
 
@@ -84,7 +55,7 @@ let signInUser (username:string) (password: string) =
 //     let followers = globalData.Users.[tweet.Creator].Followers
 //     for follower in followers do
 //         if globa: Map<string, IActorRef>lData.IsUserLoggedIn follower then
-//             clientMap.[follower] <! Feed(tweet)
+//             clientMap.[follower] <! LiveFeed(tweet)
 
 let distributeTweet (username: string) (content: string) (isRetweeted: bool) (parentTweetId: int) =
     let mutable response, status, tweetID = "", false, -1
@@ -121,16 +92,16 @@ let followAccount (followerUsername: string) (followedUsername: string) =
     status <- true
     ApiResponse(response, status)
 
+let findHashtags (username: string)(searchTerm: string) =
+    let mutable response, status = "", false
+    let data  = [|for tweetId in globalData.Hashtags.[searchTerm] do yield (globalData.Tweets.[tweetId].Creator ,globalData.Tweets.[tweetId].Content)|]
+    status <- true
+    response <- "Successfully retrieved " + string data.Length + " tweets."
+    ApiDataResponse(response, status, data)
 
-let findTweets (username: string) (searchTerm: string) (searchType: QueryType) =
+let findTweets (username: string) (searchType: QueryType) =
     let mutable response, status = "", false
     match searchType with
-    | QueryType.Hashtag ->
-        let data  = [|for tweetId in globalData.Hashtags.[searchTerm] do yield (globalData.Tweets.[tweetId].Creator ,globalData.Tweets.[tweetId].Content)|]
-        status <- true
-        printfn "here %A" data
-        response <- "Successfully retrieved " + string data.Length + " tweets."
-        ApiDataResponse(response, status, data)
     | QueryType.MyMentions ->
         if (globalData.Users.ContainsKey username) && (globalData.LoggedInUsers.Contains username) then
             status <- true
@@ -184,10 +155,13 @@ let Server (mailbox: Actor<_>) =
             if response.Status then
                 // notifyFollowers (tweetID, loggedInUserToClientMap)
                 let tweet = globalData.Tweets.[tweetID]
+                for mentioned in tweet.Mentions do
+                    if globalData.IsUserLoggedIn mentioned then
+                        loggedInUserToClientMap.[mentioned] <! LiveFeed(tweet.Creator, tweet.Content)
                 let followers = globalData.Users.[tweet.Creator].Followers
                 for follower in followers do
                     if globalData.IsUserLoggedIn follower then
-                        loggedInUserToClientMap.[follower] <! Feed(tweet.Creator, tweet.Content)
+                        loggedInUserToClientMap.[follower] <! LiveFeed(tweet.Creator, tweet.Content)
             mailbox.Sender() <! Response(response)
         | RegisterReTweet(senderUser, content, subjectTweetId) ->
             let response, tweetID = distributeTweet senderUser content true subjectTweetId
@@ -197,15 +171,19 @@ let Server (mailbox: Actor<_>) =
                 let followers = globalData.Users.[tweet.Creator].Followers
                 for follower in followers do
                     if globalData.IsUserLoggedIn follower then
-                        loggedInUserToClientMap.[follower] <! Feed(tweet.Creator, tweet.Content)
+                        loggedInUserToClientMap.[follower] <! LiveFeed(tweet.Creator, tweet.Content)
             mailbox.Sender() <! Response(response)
-            printfn "User: %s ReTweeted: %d" senderUser subjectTweetId
         | Follow(follower, followed) ->
             let response = followAccount follower followed
             mailbox.Sender() <! Response(response)
-            printfn "User %s is now following user %s" follower followed
-        | FindTweets(username, searchTerm, queryType) ->
-            let response = findTweets username searchTerm queryType
+        | FindHashtags(username, searchTerm) ->
+            let response = findHashtags username searchTerm
+            mailbox.Sender() <! DataResponse(response)
+        | FindSubscribed(username) ->
+            let response = findTweets username Subscribed
+            mailbox.Sender() <! DataResponse(response)
+        | FindMentions(username) ->
+            let response = findTweets username MyMentions
             mailbox.Sender() <! DataResponse(response)
         | ShowData ->
             printfn "%A\n%A\n%A\n%A" globalData.Users globalData.LoggedInUsers globalData.Tweets globalData.Hashtags

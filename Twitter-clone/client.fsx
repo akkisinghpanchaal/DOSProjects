@@ -19,7 +19,6 @@ let mutable serverActor = spawn system "server" Server
 
 let Client (mailbox: Actor<_>) =
     let mutable id,pwd ="",""
-    // let mutable srcdst:Map<String,String> = Map.empty
     let rec loop() = actor {
         let! msg = mailbox.Receive()
         match msg with
@@ -29,25 +28,31 @@ let Client (mailbox: Actor<_>) =
             serverActor <! SignUp(id,pwd)
         | Login -> 
             serverActor<! SignIn(id,pwd)
+        | Logout -> 
+            serverActor<! SignOut(id)
+        | GetMentions ->
+            serverActor <! FindMentions(id)
+        | GetSubscribed ->
+            serverActor <! FindSubscribed(id)
+        | GetHashtags(searchTerm) ->
+            serverActor <! FindHashtags(id, searchTerm)
         | SendTweet(content) ->
             serverActor<! RegisterTweet(id, content) 
         | SendReTweet(content,retweetId) ->
             serverActor<! RegisterReTweet(id, content, retweetId) 
         | FollowUser(followed) ->
             serverActor <! Follow(id,followed)
-        | GetTweets(searchTerm, queryType) ->
-            serverActor <! FindTweets(id, searchTerm, queryType)
         | Response(response) -> 
-            printfn "Server: %s %b" response.Response response.Status
+            if not response.Status then
+                printfn "Server: %s" response.Msg
         | DataResponse(response) ->
+            printfn "=============+%s Query Response+=================" id
             for user, tweet in response.Data do
-                printfn "Tweet by: %s\nTweet text: %s" user tweet
+                printfn "@%s : \" %s \"" user tweet
             printfn "============================================="
-        | Feed(tweetCreator, tweetContent) ->
-            printfn "Activity @%s: %s just tweeted || %s." id tweetCreator tweetContent
-                // printfn "Tweet Id: %d\nContent: %s\nParent: %d\nCreator: %s" row.Id row.Content row.ParentTweetId row.Creator
-            // if response.Data.Length > 0 then
-                // response.Data |>  List.iter (fun row -> printfn "Tweet Id: %d\nContent: %s\nParent: %d\nCreator: %s" row.Id row.Content row.ParentTweetId row.Creator)
+        | LiveFeed(tweetCreator, tweetContent) ->
+            printfn "LIVEUPDATE for @%s >> %s tweeted \n ~~~~~~~~%s\n~~~~~~~~" id tweetCreator tweetContent
+                
         return! loop()
     }
     loop()
