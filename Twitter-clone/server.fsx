@@ -6,11 +6,13 @@
 #r "nuget: Akka.FSharp" 
 #r "nuget: Akka.TestKit" 
 #r "nuget: Akka.Remote"
+#r "nuget: Akka.Serialization.Hyperion"
 
 open System
 open Akka.Actor
 open Akka.Configuration
 open Akka.FSharp
+open Akka.Serialization
 open CustomTypesMod
 open GlobalDataMod
 open UserMod

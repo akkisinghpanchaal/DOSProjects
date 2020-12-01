@@ -6,12 +6,15 @@ module ClientMod
 #r "nuget: Akka.FSharp" 
 #r "nuget: Akka.TestKit"
 #r "nuget: Akka.Remote"
+#r "nuget: Akka.Serialization.Hyperion"
+
 
 
 open System
 open Akka.Actor
 open Akka.FSharp
 open Akka.Configuration
+open Akka.Serialization
 open TweetMod
 open CustomTypesMod
 
@@ -37,7 +40,7 @@ let configuration =
             }
             remote {
                 helios.tcp {
-                    port = 0
+                    port = 8005
                     hostname = ""127.0.0.1""
                 }
             }
@@ -59,8 +62,8 @@ let Client (mailbox: Actor<_>) =
             printf "bajenge dohol!"
             id <- username
             pwd <- password
-            // serverActor <! SignUp(id,pwd)
-            serverActor <! Testing
+            serverActor <! SignUp(id,pwd)
+            // serverActor <! Testing
             printf "phir se bajenge dohol!"
         | Login -> 
             serverActor<! SignIn(id,pwd)

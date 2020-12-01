@@ -2,7 +2,7 @@
   "version": 3,
   "targets": {
     ".NETCoreApp,Version=v3.1": {
-      "Akka/1.4.10": {
+      "Akka/1.4.12": {
         "type": "package",
         "dependencies": {
           "Newtonsoft.Json": "12.0.3",
@@ -28,10 +28,10 @@
           "lib/netstandard2.0/Akka.Cluster.dll": {}
         }
       },
-      "Akka.FSharp/1.4.10": {
+      "Akka.FSharp/1.4.12": {
         "type": "package",
         "dependencies": {
-          "Akka": "1.4.10",
+          "Akka": "1.4.12",
           "FSharp.Core": "4.7.0",
           "FSharp.Quotations.Evaluator": "1.1.3",
           "FsPickler": "5.3.2"
@@ -55,6 +55,31 @@
         },
         "runtime": {
           "lib/netstandard2.0/Akka.Remote.dll": {}
+        }
+      },
+      "Akka.Serialization.Hyperion/1.4.12": {
+        "type": "package",
+        "dependencies": {
+          "Akka": "1.4.12",
+          "Hyperion": "0.9.16"
+        },
+        "compile": {
+          "lib/netstandard2.0/Akka.Serialization.Hyperion.dll": {}
+        },
+        "runtime": {
+          "lib/netstandard2.0/Akka.Serialization.Hyperion.dll": {}
+        }
+      },
+      "Akka.TestKit/1.4.12": {
+        "type": "package",
+        "dependencies": {
+          "Akka": "1.4.12"
+        },
+        "compile": {
+          "lib/netstandard2.0/Akka.TestKit.dll": {}
+        },
+        "runtime": {
+          "lib/netstandard2.0/Akka.TestKit.dll": {}
         }
       },
       "DotNetty.Buffers/0.6.0": {
@@ -233,6 +258,28 @@
           "lib/netstandard2.0/Google.Protobuf.dll": {}
         }
       },
+      "Hyperion/0.9.16": {
+        "type": "package",
+        "dependencies": {
+          "Microsoft.CSharp": "4.7.0",
+          "System.Runtime": "4.3.1"
+        },
+        "compile": {
+          "lib/netstandard2.0/Hyperion.dll": {}
+        },
+        "runtime": {
+          "lib/netstandard2.0/Hyperion.dll": {}
+        }
+      },
+      "Microsoft.CSharp/4.7.0": {
+        "type": "package",
+        "compile": {
+          "ref/netcoreapp2.0/_._": {}
+        },
+        "runtime": {
+          "lib/netcoreapp2.0/_._": {}
+        }
+      },
       "Microsoft.Extensions.DependencyInjection.Abstractions/1.1.0": {
         "type": "package",
         "dependencies": {
@@ -281,7 +328,7 @@
           "lib/netstandard1.0/_._": {}
         }
       },
-      "Microsoft.NETCore.Targets/1.1.0": {
+      "Microsoft.NETCore.Targets/1.1.3": {
         "type": "package",
         "compile": {
           "lib/netstandard1.0/_._": {}
@@ -1304,11 +1351,11 @@
           "ref/netstandard1.0/System.Resources.ResourceManager.dll": {}
         }
       },
-      "System.Runtime/4.3.0": {
+      "System.Runtime/4.3.1": {
         "type": "package",
         "dependencies": {
-          "Microsoft.NETCore.Platforms": "1.1.0",
-          "Microsoft.NETCore.Targets": "1.1.0"
+          "Microsoft.NETCore.Platforms": "1.1.1",
+          "Microsoft.NETCore.Targets": "1.1.3"
         },
         "compile": {
           "ref/netstandard1.5/System.Runtime.dll": {}
@@ -1911,14 +1958,14 @@
     }
   },
   "libraries": {
-    "Akka/1.4.10": {
-      "sha512": "DuS2xz42jmA2jgT4ip1q/kzTCwIRe6ic7KdiXj1jjAhAMlSdE8JJuyXqSN1N09jkyIfszntCVkr2wd6l8bxQhA==",
+    "Akka/1.4.12": {
+      "sha512": "YBu3Q07R2wthLz3RQHKkzassGgT63x3z+ntDONZfXeA8xDB9cGXOCr31Nhh+Xmpv0vfNnuw5q+tLOjUXJu9olw==",
       "type": "package",
-      "path": "akka/1.4.10",
+      "path": "akka/1.4.12",
       "files": [
         ".nupkg.metadata",
         ".signature.p7s",
-        "akka.1.4.10.nupkg.sha512",
+        "akka.1.4.12.nupkg.sha512",
         "akka.nuspec",
         "lib/netstandard2.0/Akka.dll",
         "lib/netstandard2.0/Akka.xml"
@@ -1937,14 +1984,14 @@
         "lib/netstandard2.0/Akka.Cluster.xml"
       ]
     },
-    "Akka.FSharp/1.4.10": {
-      "sha512": "Q6v8J1SYLucrEBoYhi3BLBxOhuiPUklEGh+V6oSqmic4za1KluoNjaJOvocAqTMusrjIwV8rT7La7+Et/UqZNg==",
+    "Akka.FSharp/1.4.12": {
+      "sha512": "rFyVNT0h2/gRCfjcw6VC3Cvjap80eCGcWOseQsUQOY3hRswUxy+HRMAz4tbSmWQRIhSktae/czIirRd7yuvPfg==",
       "type": "package",
-      "path": "akka.fsharp/1.4.10",
+      "path": "akka.fsharp/1.4.12",
       "files": [
         ".nupkg.metadata",
         ".signature.p7s",
-        "akka.fsharp.1.4.10.nupkg.sha512",
+        "akka.fsharp.1.4.12.nupkg.sha512",
         "akka.fsharp.nuspec",
         "lib/netstandard2.0/Akka.FSharp.dll",
         "lib/netstandard2.0/Akka.FSharp.xml"
@@ -1961,6 +2008,32 @@
         "akka.remote.nuspec",
         "lib/netstandard2.0/Akka.Remote.dll",
         "lib/netstandard2.0/Akka.Remote.xml"
+      ]
+    },
+    "Akka.Serialization.Hyperion/1.4.12": {
+      "sha512": "dQl6sbbwArrII4V8Z/xJGBzRhGpbrTZMVQLOyapLrmGGdXnvL3tc0bU7z3Ak+eS98y6zUMi9GBYDLrg1KOq9ew==",
+      "type": "package",
+      "path": "akka.serialization.hyperion/1.4.12",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "akka.serialization.hyperion.1.4.12.nupkg.sha512",
+        "akka.serialization.hyperion.nuspec",
+        "lib/netstandard2.0/Akka.Serialization.Hyperion.dll",
+        "lib/netstandard2.0/Akka.Serialization.Hyperion.xml"
+      ]
+    },
+    "Akka.TestKit/1.4.12": {
+      "sha512": "CPDIz1S3Ux4GV3WjYincDHXDEUFsqtWkS7GS3rvQM9FBx+oiC3s6u7fSw6xabDEpxAbhcS3DQDJRsYPL5T+8UQ==",
+      "type": "package",
+      "path": "akka.testkit/1.4.12",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "akka.testkit.1.4.12.nupkg.sha512",
+        "akka.testkit.nuspec",
+        "lib/netstandard2.0/Akka.TestKit.dll",
+        "lib/netstandard2.0/Akka.TestKit.xml"
       ]
     },
     "DotNetty.Buffers/0.6.0": {
@@ -2138,6 +2211,89 @@
         "lib/netstandard2.0/Google.Protobuf.xml"
       ]
     },
+    "Hyperion/0.9.16": {
+      "sha512": "6PiklM+zSaxq6ZnjRIvS063Lk9FEvCAjsyX3oUk8Zc91V6BpaQfV1lTqZOI94PdmgicuxMRpV18h+xbD/Uj3SQ==",
+      "type": "package",
+      "path": "hyperion/0.9.16",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "hyperion.0.9.16.nupkg.sha512",
+        "hyperion.nuspec",
+        "lib/net45/Hyperion.dll",
+        "lib/netstandard1.6/Hyperion.dll",
+        "lib/netstandard2.0/Hyperion.dll"
+      ]
+    },
+    "Microsoft.CSharp/4.7.0": {
+      "sha512": "pTj+D3uJWyN3My70i2Hqo+OXixq3Os2D1nJ2x92FFo6sk8fYS1m1WLNTs0Dc1uPaViH0YvEEwvzddQ7y4rhXmA==",
+      "type": "package",
+      "path": "microsoft.csharp/4.7.0",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "LICENSE.TXT",
+        "THIRD-PARTY-NOTICES.TXT",
+        "lib/MonoAndroid10/_._",
+        "lib/MonoTouch10/_._",
+        "lib/net45/_._",
+        "lib/netcore50/Microsoft.CSharp.dll",
+        "lib/netcoreapp2.0/_._",
+        "lib/netstandard1.3/Microsoft.CSharp.dll",
+        "lib/netstandard2.0/Microsoft.CSharp.dll",
+        "lib/netstandard2.0/Microsoft.CSharp.xml",
+        "lib/portable-net45+win8+wp8+wpa81/_._",
+        "lib/uap10.0.16299/_._",
+        "lib/win8/_._",
+        "lib/wp80/_._",
+        "lib/wpa81/_._",
+        "lib/xamarinios10/_._",
+        "lib/xamarinmac20/_._",
+        "lib/xamarintvos10/_._",
+        "lib/xamarinwatchos10/_._",
+        "microsoft.csharp.4.7.0.nupkg.sha512",
+        "microsoft.csharp.nuspec",
+        "ref/MonoAndroid10/_._",
+        "ref/MonoTouch10/_._",
+        "ref/net45/_._",
+        "ref/netcore50/Microsoft.CSharp.dll",
+        "ref/netcore50/Microsoft.CSharp.xml",
+        "ref/netcore50/de/Microsoft.CSharp.xml",
+        "ref/netcore50/es/Microsoft.CSharp.xml",
+        "ref/netcore50/fr/Microsoft.CSharp.xml",
+        "ref/netcore50/it/Microsoft.CSharp.xml",
+        "ref/netcore50/ja/Microsoft.CSharp.xml",
+        "ref/netcore50/ko/Microsoft.CSharp.xml",
+        "ref/netcore50/ru/Microsoft.CSharp.xml",
+        "ref/netcore50/zh-hans/Microsoft.CSharp.xml",
+        "ref/netcore50/zh-hant/Microsoft.CSharp.xml",
+        "ref/netcoreapp2.0/_._",
+        "ref/netstandard1.0/Microsoft.CSharp.dll",
+        "ref/netstandard1.0/Microsoft.CSharp.xml",
+        "ref/netstandard1.0/de/Microsoft.CSharp.xml",
+        "ref/netstandard1.0/es/Microsoft.CSharp.xml",
+        "ref/netstandard1.0/fr/Microsoft.CSharp.xml",
+        "ref/netstandard1.0/it/Microsoft.CSharp.xml",
+        "ref/netstandard1.0/ja/Microsoft.CSharp.xml",
+        "ref/netstandard1.0/ko/Microsoft.CSharp.xml",
+        "ref/netstandard1.0/ru/Microsoft.CSharp.xml",
+        "ref/netstandard1.0/zh-hans/Microsoft.CSharp.xml",
+        "ref/netstandard1.0/zh-hant/Microsoft.CSharp.xml",
+        "ref/netstandard2.0/Microsoft.CSharp.dll",
+        "ref/netstandard2.0/Microsoft.CSharp.xml",
+        "ref/portable-net45+win8+wp8+wpa81/_._",
+        "ref/uap10.0.16299/_._",
+        "ref/win8/_._",
+        "ref/wp80/_._",
+        "ref/wpa81/_._",
+        "ref/xamarinios10/_._",
+        "ref/xamarinmac20/_._",
+        "ref/xamarintvos10/_._",
+        "ref/xamarinwatchos10/_._",
+        "useSharedDesignerContext.txt",
+        "version.txt"
+      ]
+    },
     "Microsoft.Extensions.DependencyInjection.Abstractions/1.1.0": {
       "sha512": "2luhjVaWZd8Wmr2KUJcLNAN+iZgezTyfamLG6Lo5FVYY1LYaS7UFOmNtApHGVIytWWtuXSk4ea0t2Vx0HgF5fg==",
       "type": "package",
@@ -2194,17 +2350,17 @@
         "version.txt"
       ]
     },
-    "Microsoft.NETCore.Targets/1.1.0": {
-      "sha512": "aOZA3BWfz9RXjpzt0sRJJMjAscAUm3Hoa4UWAfceV9UTYxgwZ1lZt5nO2myFf+/jetYQo4uTP7zS8sJY67BBxg==",
+    "Microsoft.NETCore.Targets/1.1.3": {
+      "sha512": "3Wrmi0kJDzClwAC+iBdUBpEKmEle8FQNsCs77fkiOIw/9oYA07bL1EZNX0kQ2OMN3xpwvl0vAtOCYY3ndDNlhQ==",
       "type": "package",
-      "path": "microsoft.netcore.targets/1.1.0",
+      "path": "microsoft.netcore.targets/1.1.3",
       "files": [
         ".nupkg.metadata",
         ".signature.p7s",
         "ThirdPartyNotices.txt",
         "dotnet_library_license.txt",
         "lib/netstandard1.0/_._",
-        "microsoft.netcore.targets.1.1.0.nupkg.sha512",
+        "microsoft.netcore.targets.1.1.3.nupkg.sha512",
         "microsoft.netcore.targets.nuspec",
         "runtime.json"
       ]
@@ -4744,10 +4900,10 @@
         "system.resources.resourcemanager.nuspec"
       ]
     },
-    "System.Runtime/4.3.0": {
-      "sha512": "JufQi0vPQ0xGnAczR13AUFglDyVYt4Kqnz1AZaiKZ5+GICq0/1MH/mO/eAJHt/mHW1zjKBJd7kV26SrxddAhiw==",
+    "System.Runtime/4.3.1": {
+      "sha512": "abhfv1dTK6NXOmu4bgHIONxHyEqFjW8HwXPmpY9gmll+ix9UNo4XDcmzJn6oLooftxNssVHdJC1pGT9jkSynQg==",
       "type": "package",
-      "path": "system.runtime/4.3.0",
+      "path": "system.runtime/4.3.1",
       "files": [
         ".nupkg.metadata",
         ".signature.p7s",
@@ -4832,7 +4988,7 @@
         "ref/xamarinmac20/_._",
         "ref/xamarintvos10/_._",
         "ref/xamarinwatchos10/_._",
-        "system.runtime.4.3.0.nupkg.sha512",
+        "system.runtime.4.3.1.nupkg.sha512",
         "system.runtime.nuspec"
       ]
     },
@@ -6408,8 +6564,10 @@
   "projectFileDependencyGroups": {
     ".NETCoreApp,Version=v3.1": [
       "Akka.Cluster >= 1.4.10",
-      "Akka.FSharp >= 1.4.10",
+      "Akka.FSharp >= 1.4.12",
       "Akka.Remote >= 1.4.10",
+      "Akka.Serialization.Hyperion >= 1.4.12",
+      "Akka.TestKit >= 1.4.12",
       "FSharp.Core >= 4.7.2"
     ]
   },
@@ -6450,12 +6608,21 @@
           },
           "Akka.FSharp": {
             "target": "Package",
-            "version": "[1.4.10, )",
+            "version": "[1.4.12, )",
             "generatePathProperty": true
           },
           "Akka.Remote": {
             "target": "Package",
             "version": "[1.4.10, )",
+            "generatePathProperty": true
+          },
+          "Akka.Serialization.Hyperion": {
+            "target": "Package",
+            "version": "[1.4.12, )"
+          },
+          "Akka.TestKit": {
+            "target": "Package",
+            "version": "[1.4.12, )",
             "generatePathProperty": true
           },
           "FSharp.Core": {

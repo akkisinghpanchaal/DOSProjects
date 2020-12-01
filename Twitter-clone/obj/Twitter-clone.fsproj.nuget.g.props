@@ -17,8 +17,9 @@
   </PropertyGroup>
   <PropertyGroup Condition=" '$(ExcludeRestorePackageImports)' != 'true' ">
     <PkgFSharp_Core Condition=" '$(PkgFSharp_Core)' == '' ">/home/pooja/.nuget/packages/fsharp.core/4.7.2</PkgFSharp_Core>
+    <PkgAkka_TestKit Condition=" '$(PkgAkka_TestKit)' == '' ">/home/pooja/.nuget/packages/akka.testkit/1.4.12</PkgAkka_TestKit>
     <PkgAkka_Remote Condition=" '$(PkgAkka_Remote)' == '' ">/home/pooja/.nuget/packages/akka.remote/1.4.10</PkgAkka_Remote>
-    <PkgAkka_FSharp Condition=" '$(PkgAkka_FSharp)' == '' ">/home/pooja/.nuget/packages/akka.fsharp/1.4.10</PkgAkka_FSharp>
+    <PkgAkka_FSharp Condition=" '$(PkgAkka_FSharp)' == '' ">/home/pooja/.nuget/packages/akka.fsharp/1.4.12</PkgAkka_FSharp>
     <PkgAkka_Cluster Condition=" '$(PkgAkka_Cluster)' == '' ">/home/pooja/.nuget/packages/akka.cluster/1.4.10</PkgAkka_Cluster>
   </PropertyGroup>
 </Project>

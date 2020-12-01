@@ -4,12 +4,14 @@
 #r "nuget: Akka.FSharp" 
 #r "nuget: Akka.TestKit" 
 #r "nuget: Akka.Remote" 
+#r "nuget: Akka.Serialization.Hyperion"
+
 
 open System
 
 open Akka.Actor
 open Akka.FSharp
-
+open Akka.Serialization
 open CustomTypesMod
 open ClientMod
 
@@ -23,11 +25,11 @@ let randomStr =
         System.String(randomChars)
 
 let main(args: array<string>) =
-    let totalUsers = int(args.[3])
-    let idSize = string(totalUsers).Length
+    // let totalUsers = int(args.[3])
+    // let idSize = string(totalUsers).Length
 
-    let makeUserId (idNum:int): string = 
-        String.concat "" ["user"; String.replicate (idSize - string(idNum).Length) "0"; string(idNum)]
+    // let makeUserId (idNum:int): string = 
+    //     String.concat "" ["user"; String.replicate (idSize - string(idNum).Length) "0"; string(idNum)]
 
     // test user id generator
     // for i in [1..totalUsers] do
