@@ -34,7 +34,7 @@ type ServerApi =
     | FindSubscribed of string
     | FindHashtags of string * string
     | ShowData 
-
+    | Testing
 
 type ClientApi =
     | Login

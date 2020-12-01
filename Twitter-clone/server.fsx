@@ -1,20 +1,20 @@
-module ServerMod
-
-#load @"custom_types.fsx"
 #load @"user.fs"
 #load @"tweet.fs"
+#load @"custom_types.fsx"
 #load @"global_data.fsx"
 
 #r "nuget: Akka.FSharp" 
 #r "nuget: Akka.TestKit" 
+#r "nuget: Akka.Remote"
 
-open Akka.FSharp
+open System
 open Akka.Actor
+open Akka.Configuration
+open Akka.FSharp
 open CustomTypesMod
 open GlobalDataMod
 open UserMod
 open TweetMod
-open System
 
 let mutable globalData = GlobalData()
 
@@ -25,6 +25,7 @@ let checkUserLoggedIn (username: string) =
     globalData.IsUserLoggedIn username
 
 let signUpUser (username: string) (password: string) = 
+    printfn "adfadfasdfasldfalskdjf;alskdjf;alsdkj"
     let mutable response, status = "", false
     if userExists username then
         response <- sprintf "User %s already exists in the database." username
@@ -134,10 +135,12 @@ let findTweets (username: string) (searchType: QueryType) =
 
 let Server (mailbox: Actor<_>) =
     let mutable loggedInUserToClientMap: Map<string, IActorRef> = Map.empty
+    printfn "kicfgt"
     let rec loop() = actor {
         let! msg = mailbox.Receive()
         match msg with
         | SignUp(username,pwd) ->
+            printfn "dhan dhana dhan1 %s %s" username pwd
             let response = signUpUser username pwd
             mailbox.Sender() <! Response(response)
         | SignIn(username, pwd) ->
@@ -188,8 +191,26 @@ let Server (mailbox: Actor<_>) =
         | ShowData ->
             printfn "%A\n%A\n%A\n%A" globalData.Users globalData.LoggedInUsers globalData.Tweets globalData.Hashtags
             printfn "%A" globalData.Users.["rajat.rai"].MentionedTweets
+        | Testing -> 
+            mailbox .Sender() <! sprintf "Echo: %s" "lehsun"
         // | _ ->
         //     printfn "server test"
         return! loop()
     }
     loop()
+
+let config =
+    Configuration.parse
+        @"akka {
+            actor.provider = ""Akka.Remote.RemoteActorRefProvider, Akka.Remote""
+            remote.helios.tcp {
+                hostname = ""127.0.0.1""
+                port = 9191
+            }
+        }"
+
+let system = System.create "Twitter" config
+printfn "Inside driver: %A" system
+
+let serverActor = spawn system "server" Server
+System.Console.ReadKey() |> ignore

@@ -1,31 +1,58 @@
 module ClientMod
 
 #load @"custom_types.fsx"
-#load @"server.fsx"
 #load @"tweet.fs"
 
 #r "nuget: Akka.FSharp" 
-#r "nuget: Akka.TestKit" 
+#r "nuget: Akka.TestKit"
+#r "nuget: Akka.Remote"
 
-open CustomTypesMod
+
+open System
 open Akka.Actor
 open Akka.FSharp
-open System
-open ServerMod
+open Akka.Configuration
 open TweetMod
+open CustomTypesMod
 
-let system = ActorSystem.Create("Twitter")
-let mutable serverActor = spawn system "server" Server
+let configuration = 
+    ConfigurationFactory.ParseString(
+        @"akka {
+            actor {
+                provider = ""Akka.Remote.RemoteActorRefProvider, Akka.Remote""
+                deployment {
+                    /server {
+                        remote = ""akka.tcp://Twitter@127.0.0.1:9191""
+                    }
+                }
+            }
+            remote {
+                helios.tcp {
+                    port = 9191
+                    hostname = ""127.0.0.1""
+                }
+            }
+        }")
+
+let system = ActorSystem.Create("Twitter", configuration)
+printfn "Inside Client: %A" system
+
 
 let Client (mailbox: Actor<_>) =
+    // let serverActor = select "akka.tcp://Twitter@127.0.0.1:9191/user/server" system
+    let serverActor = system.ActorSelection("akka.tcp://Twitter@127.0.0.1:9191/user/server")
+    printfn "%A" serverActor
     let mutable id,pwd ="",""
     let rec loop() = actor {
         let! msg = mailbox.Receive()
         match msg with
         | Register(username, password) ->
+            printf "bajenge dohol!"
             id <- username
             pwd <- password
-            serverActor <! SignUp(id,pwd)
+            // serverActor <! SignUp(id,pwd)
+            serverActor <! Testing
+            printf "phir se bajenge dohol!"
         | Login -> 
             serverActor<! SignIn(id,pwd)
         | Logout -> 
@@ -43,8 +70,8 @@ let Client (mailbox: Actor<_>) =
         | FollowUser(followed) ->
             serverActor <! Follow(id,followed)
         | Response(response) -> 
-            if not response.Status then
-                printfn "Server: %s" response.Msg
+            // if not response.Status then
+            printfn "Server: %s" response.Msg
         | DataResponse(response) ->
             printfn "=============+%s Query Response+=================" id
             for user, tweet in response.Data do
