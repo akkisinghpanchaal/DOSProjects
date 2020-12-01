@@ -202,10 +202,22 @@ let Server (mailbox: Actor<_>) =
 let config =
     Configuration.parse
         @"akka {
+            actor.serializers{
+                json    = ""Akka.Serialization.HyperionSerializer, Akka.Serialization.Hyperion""
+                bytes   = ""Akka.Serialization.ByteArraySerializer""
+            }
+            actor.serialization-bindings {
+                ""System.Byte[]""   = bytes
+                ""System.Object""   = json
+            }
             actor.provider = ""Akka.Remote.RemoteActorRefProvider, Akka.Remote""
             remote.helios.tcp {
                 hostname = ""127.0.0.1""
                 port = 9191
+                send-buffer-size = 5120000b
+                receive-buffer-size = 5120000b 
+                maximum-frame-size = 1024000b
+                tcp-keepalive = on
             }
         }"
 

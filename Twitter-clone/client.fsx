@@ -19,6 +19,15 @@ let configuration =
     ConfigurationFactory.ParseString(
         @"akka {
             actor {
+                actor.serializers {
+                    json    = ""Akka.Serialization.HyperionSerializer, Akka.Serialization.Hyperion""
+                    bytes   = ""Akka.Serialization.ByteArraySerializer""
+                }
+                
+                actor.serialization-bindings {
+                    ""System.Byte[]""   = bytes
+                    ""System.Object""   = json
+                }
                 provider = ""Akka.Remote.RemoteActorRefProvider, Akka.Remote""
                 deployment {
                     /server {
@@ -28,7 +37,7 @@ let configuration =
             }
             remote {
                 helios.tcp {
-                    port = 9191
+                    port = 0
                     hostname = ""127.0.0.1""
                 }
             }
