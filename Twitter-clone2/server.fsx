@@ -188,8 +188,7 @@ let Server (mailbox: Actor<_>) =
         | ShowData ->
             printfn "%A\n%A\n%A\n%A" globalData.Users globalData.LoggedInUsers globalData.Tweets globalData.Hashtags
             printfn "%A" globalData.Users.["rajat.rai"].MentionedTweets
-        | Testing -> 
-            mailbox .Sender() <! sprintf "Echo: %s" "lehsun"
+        | _ -> failwith "Error!"
         return! loop()
     }
     loop()
