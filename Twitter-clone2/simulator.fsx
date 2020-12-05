@@ -210,7 +210,7 @@ let main(args: array<string>) =
     let simulatorActor = spawn system "simulator" Simulator
     // simulatorActor <! Init(totalUsers,maxSubscribers,maxTweets)
     let task = simulatorActor <? Init(totalUsers,maxSubscribers,maxTweets)
-    let response = Async.RunSynchronously (task, 1000)
+    let response = Async.RunSynchronously (task)
     printfn "%s" (string(response))
 
     // If required, then perform query simulation as well
