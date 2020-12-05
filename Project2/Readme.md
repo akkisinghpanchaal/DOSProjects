@@ -1,7 +1,7 @@
 [//]: # (Defining some variables here.)
 [1]: gossip.fsx
 
-# Team Members
+# Team Members:
 ## Akshay Kumar
 UFID: 46799946
 ## Rajat Rai
