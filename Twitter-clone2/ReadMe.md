@@ -19,7 +19,7 @@ The porject has four main parts:
 * The Sever:
 	* This is the component that forms the communication bridge between various signed-up users. All the tweets, follow notifications etc. crossover from one user to the another via the server as the mediator.
 * The Database:
-	* This component that store all the data related to hashtags, tweets and users and also procedures to perform while modfiying/adding them.
+	* This component that store all the data related to hashtags, tweets and users and also procedures to perform while modfiying/adding them(reduces load off server).
 
 #### Functionalities
 We Provide the following functionalities:
@@ -27,18 +27,16 @@ We Provide the following functionalities:
 * Login/Logout for an existing user
 * Follow for existing users from A to B
 * Tweet/Retweet by an existing user
-* Live updates  from users that a particular user follows and also onmentions in a tweet.
-* Support for mentioning another user in tweets and retweets, which generates a notification for the person mentioned
-* Support for creating new, following and using hastags in tweets and retweets
-* Retweet by an existing user of an already existing tweet by another existing user
-* Query tweets by an existing user on the basis of
-	* Tweets that have been mentioned in
-	* Tweets by users they follow
-	* Tweets by hashtags they follow
+* Support for using hastags in tweets and retweets
+* Support for Live Updates, if a user is logged in, on:
+    * Tweets by users they follow
+    * Tweets that have been mentioned in
+* Support for quering tweets by an existing user on the basis of:
 	* Tweets they made
-* Fetch one users followers as well as all the users they follow
-* Population of an users timeline by leveraging the above functionality
-* Deletion of a user if requested along with its followed-by table and its entry in all the other users’ followed-by tables
+	* Tweets by hashtags
+	* Tweets by users they follow
+	* Tweets that have been mentioned in
+* Population of an users timeline and mentions by leveraging the above functionality
 
 #### Modules
 The above functionalities are provided through an intricate interplay of the modules, which are:
