@@ -60,14 +60,19 @@ dotnet fsi --langversion:preview simulator.fsx [n] [maxSubs] [maxTwts]
 The above table and graph show how much time it took for each user to receive a copy of a tweet on its logged-in client. Note that each user other than the one tweeting was subscribed to receive a tweet. We would also like to mention that, after the 5000 users mark, the CPU of the machine throttled because of heat, and hence the results after that are not on the same processor clock speed. We tested this on an Intel i7-8750H octa-core CPU.
 
 #### Zipf Distribution of followers
-In this project, we have simulated a Zipf distribution on the number of followers/subscribers and number of tweets made for all active users.
-![Zipf first graph](./images/zipf1.png)
-![Zipf second graph](./images/zipf2.png)
-![Zipf third graph](./images/zipf3.png)
+In this project, we have simulated a Zipf distribution on the number of followers/subscribers and number of tweets made for all active users. Below figures are sample distribution graphs of followers from three of our test simulations.
+
+* Total users: 500 | Max subscribers: 400
+![Zipf first graph](./images/zipf_500_400.png)
+
+* Total users: 100 | Max subscribers: 100
+![Zipf second graph](./images/zipf_100_100.png)
+
+* Total users: 50 | Max subscribers: 50
+![Zipf third graph](./images/zipf_50_50.png)
 
 #### Results
-Even though we could host a maximum of 100,000 users on the test machine, we are certain that this engine can easily do more because of its highly distributive nature, even within the engine. This Engine
-provides a layered architecture that exposes a top layer API to host a twitter-like engine along with compatible clients.
+Even though we could host a maximum of 100,000 users on the test machine, we are certain that this engine can easily do more because of its highly distributive nature, even within the engine.
 
 #### Dependencies
 * Akka.Cluster~>1.4.10

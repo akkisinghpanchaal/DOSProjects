@@ -205,7 +205,7 @@ let Simulator (mailbox: Actor<_>) =
     loop()
 
 let main(args: array<string>) =
-    let totalUsers, maxSubscribers, maxTweets, runQuerySimulation = int(args.[3]), int(args.[4]), int(args.[5]), args.[5]
+    let totalUsers, maxSubscribers, maxTweets, runQuerySimulation = int(args.[3]), int(args.[4]), int(args.[5]), args.[6]
     let isRunQuerySimulation = ((runQuerySimulation.ToLower() = "yes") ||  (runQuerySimulation.ToLower() = "y"))
     let simulatorActor = spawn system "simulator" Simulator
     // simulatorActor <! Init(totalUsers,maxSubscribers,maxTweets)
