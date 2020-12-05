@@ -64,8 +64,10 @@ let Simulator (mailbox: Actor<_>) =
     let mutable stopWatch = null
     let mutable randomRetweetCount = 0
     let mutable randomLogoutCount = 0
+    let mutable topProfilesCount = 0
     let mutable followingSizesZipf: int array = Array.empty
     let mutable tweetCountUsers: int array = Array.empty
+    let mutable userActors: List<IActorRef> = List.empty
     let mutable caller: IActorRef = null
 
     let makeUserId (idNum:int): string = 
@@ -88,7 +90,7 @@ let Simulator (mailbox: Actor<_>) =
                 maxSubscribers <- totalUsers-1
             printfn "Total Users: %d\nMax Subscribers: %d" totalUsers maxSubscribers
             
-            let userActors = List.init totalUsers (fun idNum -> spawn system (makeUserId(idNum)) Client)
+            userActors <- List.init totalUsers (fun idNum -> spawn system (makeUserId(idNum)) Client)
 
             // generating zipf distribution of followers for each users in order of id
             let followingSizes = getZipfDistribution totalUsers maxSubscribers
@@ -172,32 +174,49 @@ let Simulator (mailbox: Actor<_>) =
             if tasksDone = tasksCount then
                 stopWatch.Stop()
                 printfn "All requests completed."
-                let topProfilesCount = min 9 totalUsers-1
+                topProfilesCount <- min 9 (totalUsers-1)
                 let summaryTitle = "\n\n====================================\n\tSIMULATION SUMMARY\n====================================\n\n"
                 let mutable summaryBody = 
-                    sprintf "\n\nTotal Users: %d\nMax subscribers for any user: %d\nTotal API Requests processed: %d\nTotal random retweets: %d\nRandom logouts simulated: %d\nTotal simulation time: %f" totalUsers maxSubscribers tasksCount randomRetweetCount randomLogoutCount stopWatch.Elapsed.TotalMilliseconds
-                summaryBody <- summaryBody + "\n\nBelow are the top %d most popular accounts based on our simulation results.\n\n"
+                    sprintf "Total Users: %d\nMax subscribers for any user: %d\nTotal API Requests processed: %d\nTotal random retweets: %d\nRandom logouts simulated: %d\nTotal simulation time: %.2f milliseconds" totalUsers maxSubscribers tasksCount randomRetweetCount randomLogoutCount stopWatch.Elapsed.TotalMilliseconds
+                summaryBody <- summaryBody + "\n\nBelow are the top " + string(topProfilesCount) + " most popular accounts based on our simulation results.\n\n"
 
                 for i in 0..topProfilesCount do
                     let mutable thisAccountSummary = 
-                        sprintf "%d. %s | Followers: %d | Tweets: %d\n" i (makeUserId(i)) (followingSizesZipf.[i]) (tweetCountUsers.[i])
+                        sprintf "%d. %s | Followers: %d | Tweets: %d\n" (i+1) (makeUserId(i)) (followingSizesZipf.[i]) (tweetCountUsers.[i])
                     summaryBody <- summaryBody + thisAccountSummary
                 
-                // printfn "||Total run time = %fms||" stopWatch.Elapsed.TotalMilliseconds
                 caller <! (summaryTitle + summaryBody)
                 return! loop()
+        | RunQuerySimulation ->
+
+            printfn "Starting query simulation..."
+            for i in 0..topProfilesCount do
+                if i % 5 = 0 then
+                    userActors.[i] <! GetHashtags("#Christmas")
+                elif i % 3 = 0 then
+                    userActors.[i] <! Login
+                    userActors.[i] <! GetSubscribed
+                elif i % 2 = 0 then
+                    userActors.[i] <! Login
+                    userActors.[i] <! GetMentions
+
         return! loop()
     }
     loop()
 
 let main(args: array<string>) =
-    let totalUsers, maxSubscribers, maxTweets = int(args.[3]), int(args.[4]), int(args.[5])
+    let totalUsers, maxSubscribers, maxTweets, runQuerySimulation = int(args.[3]), int(args.[4]), int(args.[5]), args.[5]
+    let isRunQuerySimulation = ((runQuerySimulation.ToLower() = "yes") ||  (runQuerySimulation.ToLower() = "y"))
     let simulatorActor = spawn system "simulator" Simulator
     // simulatorActor <! Init(totalUsers,maxSubscribers,maxTweets)
     let task = simulatorActor <? Init(totalUsers,maxSubscribers,maxTweets)
     let response = Async.RunSynchronously (task, 1000)
-    
     printfn "%s" (string(response))
 
+    // If required, then perform query simulation as well
+    // if isRunQuerySimulation then
+    //     let task2 = simulatorActor <? RunQuerySimulation
+    //     let response2 = Async.RunSynchronously (task2, 1000)
+    //     printfn "Query simulation done."
 main(Environment.GetCommandLineArgs())
 // System.Console.ReadKey() |> ignore

@@ -7,9 +7,6 @@ type QueryType =
 type ApiResponse(response: string, status: bool) =
     let responseMsg = response
     let responseStatus = status
-    // let mutable responseData: Option<List<Tweet>> = match data with
-    //                             | Some x -> x
-    //                             | None -> null
 
     member this.Response
         with get() = responseMsg
@@ -31,22 +28,6 @@ type ApiDataResponse(response: string, status: bool, data: array<string * string
     
     member this.Data
         with get() = responseData
-
-// type ApiResponse = {
-//     response: string
-//     status: bool
-// }
-
-// type ApiDataResponse = {
-//     response: string
-//     status: bool
-//     data: array<string * string>
-// }
-
-// type BandaBanao = {
-//     username: string
-//     password: string
-// }
 
 
 type ServerApi = 
@@ -75,33 +56,35 @@ type ClientApi =
     | ApiResponse of string * bool
     | ApiDataResponse of string * bool * array<string * string>
     
+
 type InitEmulation =
     | Init of int * int * int
     | UnitTaskCompleted
+    | RunQuerySimulation
 
 
-let randTweets =[|"The fish dreamed of escaping the fishbowl and into the toilet where he saw his friend go.";
-"We have young kids who often walk into our room at night for various reasons including clowns in the closet.";
-"There are few things better in life than a slice of pie.";
-"The beauty of the sunset was obscured by the industrial cranes.";
-"The swirled lollipop had issues with the pop rock candy.";
-"I caught my squirrel rustling through my gym bag.";
-"He was the type of guy who liked Christmas lights on his house in the middle of July.";
+let randTweets =[|"The fish dreamed of escaping the fishbowl and into the #toilet where he saw his #friend go.";
+"We have young #kids who often walk into our room at night for various reasons including clowns in the closet.";
+"There are few things better in life than a slice of #pie.";
+"The #beauty of the sunset was obscured by the industrial cranes.";
+"The swirled #lollipop had issues with the pop rock #candy.";
+"I caught my squirrel rustling through my #gym bag.";
+"He was the type of guy who liked #Christmas lights on his house in the middle of July.";
 "They desperately needed another drummer since the current one only knew how to play bongos.";
-"With a single flip of the coin; his life changed forever.";
+"With a #single flip of the coin; his life changed forever.";
 "Just go ahead and press that button.";
 "He went back to the video to see what had been recorded and was shocked at what he saw.";
-"Warm beer on a cold day isn't my idea of fun.";
-"People generally approve of dogs eating cat food but not cats eating dog food.";
-"Seek success; but always be prepared for random cats.";
+"Warm #beer on a cold day isn't my idea of fun.";
+"People generally approve of dogs eating #cat #food but not cats eating #dog food.";
+"Seek #success; but always be prepared for random cats.";
 "Nothing is as cautiously cuddly as a pet porcupine.";
-"We should play with legos at camp.";
-"He used to get confused between soldiers and shoulders; but as a military man; he now soldiers responsibility.";
-"He learned the hardest lesson of his life and had the scars; both physical and mental; to prove it.";
+"We should play with legos at #camp.";
+"He used to get confused between #soldiers and shoulders; but as a military man; he now soldiers responsibility.";
+"He learned the hardest lesson of his #life and had the scars; both physical and mental; to prove it.";
 "I liked their first two albums but changed my mind after that charity gig.";
-"He wondered if she would appreciate his toenail collection.";
-"She was the type of girl who wanted to live in a pink house.";
+"He wondered if she would #appreciate his toenail collection.";
+"She was the type of girl who wanted to live in a #pink house.";
 "He waited for the stop sign to turn to a go sign.";
-"He played the game as if his life depended on it and the truth was that it did.";
-"He was surprised that his immense laziness was inspirational to others.";
+"He played the game as if his life depended on it and the #truth was that it did.";
+"He was surprised that his immense #laziness was inspirational to others.";
 "She learned that water bottles are no longer just to hold liquid; but they're also status symbols.";|]

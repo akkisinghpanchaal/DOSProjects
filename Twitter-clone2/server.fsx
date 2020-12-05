@@ -50,12 +50,6 @@ let signInUser (username:string) (password: string) =
         status <- true
     response, status
 
-// let notifyFollowers (tweetID:int) clientMap = 
-//     let tweet = globalData.Tweets.[tweetID]
-//     let followers = globalData.Users.[tweet.Creator].Followers
-//     for follower in followers do
-//         if globa: Map<string, IActorRef>lData.IsUserLoggedIn follower then
-//             clientMap.[follower] <! LiveFeed(tweet)
 
 let distributeTweet (username: string) (content: string) (isRetweeted: bool) (parentTweetId: int) =
     let mutable response, status, tweetID = "", false, -1
@@ -64,7 +58,6 @@ let distributeTweet (username: string) (content: string) (isRetweeted: bool) (pa
     elif not (globalData.LoggedInUsers.Contains username) then
         response <- "Error: User " + username + " is not logged in." 
     else
-        // printfn "Tweet Info %d %A %A" tweet.Id tweet.Mentions tweet.Hashtags
         if not isRetweeted then
             tweetID <- globalData.AddTweet content username
             response <- "Tweet registered successfully"
@@ -132,9 +125,7 @@ let findTweets (username: string) (searchType: QueryType) =
             response, status, [||]
 // ------------------------------------------------------------------------------
 
-// let Server (printerActorRef: IActorRef) (mailbox: Actor<_>) =
 let Server (mailbox: Actor<_>) =
-    // let mutable printerActor = printerActorRef
     let mutable loggedInUserToClientMap: Map<string, IActorRef> = Map.empty
     let rec loop() = actor {
         let! msg = mailbox.Receive()
@@ -187,15 +178,7 @@ let Server (mailbox: Actor<_>) =
             mailbox.Sender() <! ApiDataResponse(response, status, data)
         | ShowData ->
             printfn "%A\n%A\n%A\n%A" globalData.Users globalData.LoggedInUsers globalData.Tweets globalData.Hashtags
-            printfn "%A" globalData.Users.["rajat.rai"].MentionedTweets
         | _ -> failwith "Error!"
         return! loop()
     }
     loop()
-
-
-// let system = System.create "Twitter" config
-// printfn "Inside driver: %A" system
-
-// let serverActor = spawn system "server" Server
-// System.Console.ReadKey() |> ignore
