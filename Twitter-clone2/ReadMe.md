@@ -52,7 +52,7 @@ cd /path/to/Twitter-clone/
 Now, you can run the program using the below command:
 
 ```bash
-dotnet fsi --langversion:preview smilator.fsx [n] [maxSubs] [maxTwts]
+dotnet fsi --langversion:preview simulator.fsx [n] [maxSubs] [maxTwts]
 ```
 #### Observations
 ![Observation Table](./images/obsrv_tbl.png)
