@@ -55,7 +55,7 @@ let Client (mailbox: Actor<_>) =
         | ApiResponse(response, status) ->
             if not status then
                 printfn "Server: %s" response
-            select "/user/emulator" system  <! 1
+            select "/user/simulator" system  <! UnitTaskCompleted
         | ApiDataResponse(response, status, data) ->
             printfn "=============+%s Query Response+=================" id
             for user, tweet in data do

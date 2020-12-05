@@ -34,6 +34,8 @@ type GlobalData() =
         for mentionedUser in tweet.Mentions do
             if users.ContainsKey mentionedUser then
                 users.[mentionedUser].AddToMentionedTweets(tweet.Id)
+                users.[mentionedUser].AddToTimeline(tweet.Id)
+
 
     let privateIsUserLoggedIn (username: string) =
         loggedInUsers.Contains username
@@ -63,7 +65,7 @@ type GlobalData() =
         users.Item(tweet.Creator).AddToTimeline(tweet.Id)
         users.Item(username).AddToTweets(tweet.Id)
         addTweetToFollowersTimeline tweet
-        addReTweetToOriginalUserTimeline tweet
+        // addReTweetToOriginalUserTimeline tweet
         addHashtags tweet
         updateMentions tweet
         tweet.Id
