@@ -12,10 +12,10 @@ The porject has four main parts:
 * The Simulator:
 	* This module is a Akka actor that takes 3 command line inputs:
         * n : Number of users
-        * maxSubs : Maximum number of subscribers a user
-        * maxTwts : Maximum number of Tweets a user
+        * maxSubs : Maximum number of subscribers for a user
+        * maxTwts : Maximum number of Tweets for a user
 * The Client:
-	* This module is a Akka actor that mimics the functionality of logged in application provided to the user by the service. For example Twitter for Web/Android.
+	* This module is an Akka actor that mimics the functionality of logged in application provided to the user by the service. For example Twitter for Web/Android.
 * The Sever:
 	* This is the component that forms the communication bridge between various signed-up users. All the tweets, follow notifications etc. crossover from one user to the another via the server as the mediator.
 * The Database:
@@ -23,7 +23,7 @@ The porject has four main parts:
 
 #### Functionalities
 We Provide the following functionalities:
-* Signup for a new user
+* Signup: A new user can sign up.
 * Login/Logout for an existing user
 * Follow for existing users from A to B
 * Tweet/Retweet by an existing user
