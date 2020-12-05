@@ -66,6 +66,7 @@ let Simulator (mailbox: Actor<_>) =
     let mutable randomLogoutCount = 0
     let mutable topProfilesCount = 0
     let mutable followingSizesZipf: int array = Array.empty
+    let mutable tweetsDistZipf: int array = Array.empty
     let mutable tweetCountUsers: int array = Array.empty
     let mutable userActors: List<IActorRef> = List.empty
     let mutable caller: IActorRef = null
@@ -95,7 +96,8 @@ let Simulator (mailbox: Actor<_>) =
             // generating zipf distribution of followers for each users in order of id
             let followingSizes = getZipfDistribution totalUsers maxSubscribers
             followingSizesZipf <- followingSizes
-            // printfn "%A" followingSizes
+            let tweetsDist = getZipfDistribution totalUsers maxTweets
+            tweetsDistZipf <- tweetsDist
 
             printfn "\nStarting simulation...\n"
             stopWatch <- System.Diagnostics.Stopwatch.StartNew()
@@ -112,7 +114,6 @@ let Simulator (mailbox: Actor<_>) =
             // creating a zipf distribution of subscribers.
             // The max count of subscribers is passed from the command line
             let mutable followingSize = 0
-            let mutable tweetsCap = maxTweets
             let mutable userStr = ""
             let mutable tweetCount = 0
             let mutable retweetCount = 0
@@ -123,7 +124,6 @@ let Simulator (mailbox: Actor<_>) =
                 userStr <-(makeUserId(userNum))
                 printfn "%s" userStr
                 followingSize <- followingSizes.[userNum]
-                // printfn "User %s will get %d followers" userStr followingSize
                 userActors.[userNum] <! Login
                 for _ in 1..followingSize do
                     let mutable randUser = getRandomUser userNum totalUsers
@@ -133,33 +133,31 @@ let Simulator (mailbox: Actor<_>) =
                     currFollowing <- currFollowing.Add(randUser)
                     printfn "%s following %s" (makeUserId(userNum)) (makeUserId(randUser))
                     userActors.[userNum] <! FollowUser(makeUserId(randUser))
-                totalTasks <-  followingSize + totalTasks
                 currFollowing <- Set.empty
-                // followingSize <- nextZipfSize followingSize
+            totalTasks <- Array.sum followingSizes + totalTasks
 
             for userNum in 0..(totalUsers-1) do
                 userStr <- (makeUserId(userNum))
-                // printfn "User %s will tweet %d times" userStr tweetsCap
-                for _ in 1..tweetsCap do
+                for _ in 1..tweetsDist.[userNum] do
                     let mutable randUser = getRandomUser userNum totalUsers
                     let mutable randTweet = "@" + string(makeUserId(randUser)) + " " + randTweets.[random.Next(randTweets.Length)]
                     userActors.[userNum] <! SendTweet(randTweet)
-                    if (userNum%2 <> 0) <> (tweetsCap%2 <> 0) then
+                    if (userNum%2 <> 0) <> (tweetsDist.[userNum]%2 <> 0) then
                         userActors.[userNum] <! SendReTweet("@"+string(makeUserId(randUser))+ " "+randTweets.[ random.Next() % randTweets.Length ], random.Next()%tweetCount)
                         retweetCount <- retweetCount + 1
                 if (userNum % 10) = (random.Next(10)) then
                     loggedOut <- 1+ loggedOut
                     userActors.[userNum] <! Logout
                     // printfn "User %s has logged out successfully." userStr
-                tweetCountUsers.[userNum] <- tweetsCap
-                tweetCount <- tweetsCap + tweetCount
-                tweetsCap <- nextZipfSize tweetsCap
+                tweetCountUsers.[userNum] <- tweetsDist.[userNum]
+                tweetCount <- tweetsDist.[userNum] + tweetCount
             randomRetweetCount <- retweetCount
             randomLogoutCount <- loggedOut
             tasksCount <- totalTasks + tweetCount + retweetCount + loggedOut
             printfn "Total Tasks:%d %d\nRetweet Count %d" totalTasks tasksDone retweetCount
         | UnitTaskCompleted -> 
             tasksDone <- 1 + tasksDone
+            printfn "Tasks done %d out of %d" tasksDone tasksCount
             let mark25pct = int(float(tasksCount)*0.25)
             let mark50pct = int(float(tasksCount)*0.50)
             let mark75pct = int(float(tasksCount)*0.75)
@@ -170,7 +168,6 @@ let Simulator (mailbox: Actor<_>) =
             if tasksDone = mark75pct then
                 printfn "75% of requests completed."
 
-            // printfn "Tasks Done: %d out of %d" tasksDone tasksCount
             if tasksDone = tasksCount then
                 stopWatch.Stop()
                 printfn "All requests completed."
@@ -188,7 +185,6 @@ let Simulator (mailbox: Actor<_>) =
                 caller <! (summaryTitle + summaryBody)
                 return! loop()
         | RunQuerySimulation ->
-
             printfn "Starting query simulation..."
             for i in 0..topProfilesCount do
                 if i % 5 = 0 then
@@ -199,7 +195,6 @@ let Simulator (mailbox: Actor<_>) =
                 elif i % 2 = 0 then
                     userActors.[i] <! Login
                     userActors.[i] <! GetMentions
-
         return! loop()
     }
     loop()
@@ -210,7 +205,7 @@ let main(args: array<string>) =
     let simulatorActor = spawn system "simulator" Simulator
     // simulatorActor <! Init(totalUsers,maxSubscribers,maxTweets)
     let task = simulatorActor <? Init(totalUsers,maxSubscribers,maxTweets)
-    let response = Async.RunSynchronously (task, 1000)
+    let response = Async.RunSynchronously(task)
     printfn "%s" (string(response))
 
     // If required, then perform query simulation as well
