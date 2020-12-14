@@ -1,7 +1,7 @@
 .ionide/symbolCache.db
-./**/*.txt
+/**/*.txt
 FirstIonideProject/Rai,Kumar.zip
-./**/*.cache
+/**/*.cache
 .fake
 .ionide
 /**/obj/
