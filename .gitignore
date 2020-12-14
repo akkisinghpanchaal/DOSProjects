@@ -4,5 +4,5 @@ FirstIonideProject/Rai,Kumar.zip
 ./**/*.cache
 .fake
 .ionide
-./**/obj/
-./**/bin/
+/**/obj/
+/**/bin/

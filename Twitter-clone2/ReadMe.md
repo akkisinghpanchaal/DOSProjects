@@ -55,8 +55,9 @@ Now, you can run the program using the below command:
 dotnet fsi --langversion:preview simulator.fsx [n] [maxSubs] [maxTwts]
 ```
 #### Observations
-![Observation Table](./images/obsrv_tbl.png)
-![Observation Graph](./images/graph.png)
+![Observation Table](./images/time_graph_table.png)
+![Observation Graph](./images/time_graph.png)
+
 The above table and graph show how much time it took for each user to receive a copy of a tweet on its logged-in client. Note that each user other than the one tweeting was subscribed to receive a tweet. We would also like to mention that, after the 5000 users mark, the CPU of the machine throttled because of heat, and hence the results after that are not on the same processor clock speed. We tested this on an Intel i7-8750H octa-core CPU.
 
 #### Zipf Distribution of followers
