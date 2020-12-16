@@ -1,7 +1,7 @@
 
 // #r "nuget: Akka.Fsharp"
 // #r "nuget: Akka.TestKit" 
-
+module AppMod
 
 open System
 open Suave
@@ -28,46 +28,12 @@ open Akka.Configuration
 open Akka.FSharp
 open Akka.TestKit
 
-
-type ServerMsg =
-  | Login of string * string
-  | Loop1
-  | Loop2
+open ServerMod
+open CustomTypesMod
 
 let mutable myws:WebSocket array = Array.empty
-
-// *********** WORKER ACTOR LOGIC **********
-let WorkerActor (mailbox: Actor<_>) =
-    let rec loop() = actor {
-        let! msg = mailbox.Receive()
-        // For every number, check if it can form a Luca's pyramid of size k
-        match msg with
-        | Login(uid, pwd) ->
-          printfn "Login begin..."
-          let mutable statMsg = "Success login"
-          if pwd <> "lassan" then
-            statMsg <- "Login failed"
-          mailbox.Sender() <! statMsg
-        | Loop1 ->
-          while true do
-            System.Threading.Thread.Sleep(500);
-            printfn "Loop1 running..."
-        | Loop2 ->
-          // while true do
-          //   System.Threading.Thread.Sleep(500);
-          //   printfn "Loop1 running..."
-            printfn "Loop2 just ran...====================================="
-          
-        
-        // | _ ->
-        //   printfn "None matched"
-        return! loop()
-    }
-    loop()
-
-
-let system = ActorSystem.Create("Twitter")
-let server = spawn system "server" WorkerActor
+let system = ActorSystem.Create("TwitterCloneREST")
+let server = spawn system "server" Server
 
 let ws (webSocket : WebSocket) (context: HttpContext) =
   socket {
@@ -173,18 +139,19 @@ let parseCreds (req : HttpRequest) =
 
 let loginUser (req: HttpRequest) = 
     let creds = parseCreds req
-    // if creds.Password = "lassan" then
-    //     OK "You're good!"
-    //     // handShake ws
-    // else
-    //     OK "maa chuda!"
-    let task = server <? Login(creds.Uid, creds.Password)
+    let task = server <? SignIn(creds.Uid, creds.Password)
     let resp = Async.RunSynchronously(task)
     let wresp = (resp:string)
                   |> System.Text.Encoding.ASCII.GetBytes
                   |> ByteSegment
     printfn "Sending a websocket message..."
-    myws.[0].send Text wresp true |> ignore
+    // myws.[0].send Text wresp true |> ignore
+    OK resp
+
+let registerUser (req: HttpRequest) = 
+    let creds = parseCreds req
+    let task = server <? SignUp(creds.Uid, creds.Password)
+    let resp = Async.RunSynchronously(task)
     OK resp
 
 
@@ -197,6 +164,7 @@ let app =
         POST >=> choose
             [ 
                 path "/hello" >=> OK "Hello POST!"
+                path "/register" >=> request registerUser
                 path "/login" >=> request loginUser
                  ]
         NOT_FOUND "Found no handlers." ]
