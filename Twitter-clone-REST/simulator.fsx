@@ -1,23 +1,20 @@
 #load @"custom_types.fs"
-// #load @"server.fsx"
 #load @"client.fsx"
 
 #r "nuget: Akka.FSharp" 
 #r "nuget: Akka.TestKit"
 #r "nuget: MathNet.Numerics"
-
 open System
 
 open Akka.Actor
 open Akka.FSharp
 open CustomTypesMod
-// open ServerMod
 open ClientMod
 open MathNet.Numerics
 
 let zipfErrorPct = 10.00
 let random = System.Random()
-let system = ActorSystem.Create("TwitterClient")
+// let system = ActorSystem.Create("TwitterClient")
 
 let precisionVal (num: int) (precisionPct: float) =
     // provides a value which is within a precision of (precisionPct %) from num
@@ -80,55 +77,60 @@ let Simulator (mailbox: Actor<_>) =
         let! msg = mailbox.Receive()
         match msg with
         | Init(totalUsrs, maxSubs, maxTwts) ->
-               let cl = spawn system "testclient" Client
-               cl <! Register("rajat.rai", "lassan")
-               cl <! Login
-        //     caller <- mailbox.Sender()
-        //     totalUsers <- totalUsrs
-        //     maxSubscribers <- maxSubs
-        //     maxTweets <- maxTwts
-        //     let mutable totalTasks = 0
-        //     tweetCountUsers <- Array.zeroCreate totalUsers
+            // let cl = spawn system "testclient" Client
+            // cl <! Register("rajatrai", "lassan")
+            // cl <! Login
+            // cl <! InitSocket
+            // tweetCountUsers <- Array.zeroCreate totalUsers
 
-        //     if maxSubscribers > totalUsers then
-        //         printfn "[Warning] Max subscribers cannot be more than the total number of users in the system.\n"
-        //         maxSubscribers <- totalUsers-1
-        //     printfn "Total Users: %d\nMax Subscribers: %d" totalUsers maxSubscribers
+
+            caller <- mailbox.Sender()
+            totalUsers <- totalUsrs
+            maxSubscribers <- maxSubs
+            maxTweets <- maxTwts
+            let mutable totalTasks = 0
+
+            if maxSubscribers > totalUsers then
+                printfn "[Warning] Max subscribers cannot be more than the total number of users in the system.\n"
+                maxSubscribers <- totalUsers-1
+            printfn "Total Users: %d\nMax Subscribers: %d" totalUsers maxSubscribers
             
-        //     userActors <- List.init totalUsers (fun idNum -> spawn system (makeUserId(idNum)) Client)
+            userActors <- List.init totalUsers (fun idNum -> spawn system (makeUserId(idNum)) Client)
 
-        //     // generating zipf distribution of followers for each users in order of id
-        //     let followingSizes = getZipfDistribution totalUsers maxSubscribers
-        //     followingSizesZipf <- followingSizes
-        //     let tweetsDist = getZipfDistribution totalUsers maxTweets
-        //     tweetsDistZipf <- tweetsDist
+            // generating zipf distribution of followers for each users in order of id
+            let followingSizes = getZipfDistribution totalUsers maxSubscribers
+            followingSizesZipf <- followingSizes
+            let tweetsDist = getZipfDistribution totalUsers maxTweets
+            tweetsDistZipf <- tweetsDist
 
-        //     printfn "\nStarting simulation...\n"
-        //     stopWatch <- System.Diagnostics.Stopwatch.StartNew()
-        //     for i in 0..(userActors.Length-1) do
-        //         userActors.[i] <! Register(makeUserId(i),randomStr 12)
-        //     totalTasks<-userActors.Length*2
+            printfn "\nStarting simulation...\n"
+            stopWatch <- System.Diagnostics.Stopwatch.StartNew()
+            for i in 0..(userActors.Length-1) do
+                userActors.[i] <! Register(makeUserId(i),randomStr 12)
+            totalTasks<-userActors.Length*2
 
-        //     // giving some time for signing up all the users
+            // giving some time for signing up all the users
 
-        //     // login all the users signed up
-        //     // this could be changed to simulate periodic active span of users.
-        //     // for i in 0..(userActors.Length-1) do
+            // login all the users signed up
+            // this could be changed to simulate periodic active span of users.
+            // for i in 0..(userActors.Length-1) do
             
-        //     // creating a zipf distribution of subscribers.
-        //     // The max count of subscribers is passed from the command line
-        //     let mutable followingSize = 0
-        //     let mutable userStr = ""
-        //     let mutable tweetCount = 0
-        //     let mutable retweetCount = 0
-        //     let mutable loggedOut = 0
-        //     let mutable currFollowing: Set<int> = Set.empty
+            // creating a zipf distribution of subscribers.
+            // The max count of subscribers is passed from the command line
+            let mutable followingSize = 0
+            let mutable userStr = ""
+            let mutable tweetCount = 0
+            let mutable retweetCount = 0
+            let mutable loggedOut = 0
+            let mutable currFollowing: Set<int> = Set.empty
 
-        //     for userNum in 0..(totalUsers-1) do
-        //         userStr <-(makeUserId(userNum))
-        //         printfn "%s" userStr
-        //         followingSize <- followingSizes.[userNum]
-        //         userActors.[userNum] <! Login
+            for userNum in 0..(totalUsers-1) do
+                userStr <-(makeUserId(userNum))
+                printfn "%s" userStr
+                followingSize <- followingSizes.[userNum]
+                userActors.[userNum] <! Login
+                userActors.[userNum] <! InitSocket
+
         //         for _ in 1..followingSize do
         //             let mutable randUser = getRandomUser userNum totalUsers
         //             // check if the user is already followed

@@ -1,18 +1,19 @@
 module ClientMod
 
 #load @"custom_types.fs"
-// #load @"server.fsx"
-
-
 #r "nuget: Akka.FSharp" 
 #r "nuget: Akka.TestKit"
 #r "nuget: FSharp.Data"
 
-
 open System
-open Akka.Actor
 open Akka.FSharp
 open CustomTypesMod
+open System.Net.WebSockets;
+open Akka.Actor
+open Akka.FSharp
+open System.Text;
+
+
 // open ServerMod
 
 open FSharp.Data
@@ -21,7 +22,9 @@ let twitterHostUrl = "http://localhost:8080"
 
 let loginUrl = twitterHostUrl + "/login"
 let signUpUrl = twitterHostUrl + "/register"
+let socketUrl = twitterHostUrl + "/websocket"
 
+let system = ActorSystem.Create("TwitterClient")
 
 let TwitterApiCall (url: string) (method: string) (body: string) = 
     match method with
@@ -30,12 +33,72 @@ let TwitterApiCall (url: string) (method: string) (body: string) =
     | "POST" ->
         Http.RequestString(url, httpMethod = "POST", body = TextRequest body)
 
-// let Client (mailbox: Actor<_>) =
+type ClientMsgs =
+    | Listen of ClientWebSocket
+
+let create() = new ClientWebSocket()
+
+let connect (port: int) (uid: string) (ws: ClientWebSocket) = 
+    let tk = Async.DefaultCancellationToken
+    Async.AwaitTask(ws.ConnectAsync(Uri(sprintf "ws://127.0.0.1:%d/websocket/%s" port uid), tk))
+
+let close (ws: ClientWebSocket) =
+    let tk = Async.DefaultCancellationToken
+    Async.AwaitTask(ws.CloseOutputAsync(WebSocketCloseStatus.NormalClosure, "END", tk))
+
+let send (str: string) (ws: ClientWebSocket) =
+    let req = Encoding.UTF8.GetBytes str
+    let tk = Async.DefaultCancellationToken
+    Async.AwaitTask(ws.SendAsync(ArraySegment(req), WebSocketMessageType.Text, true, tk))
+
+let read (ws: ClientWebSocket) = 
+    let loop = true
+    async {
+        while loop do
+            let buf = Array.zeroCreate 4096
+            let buffer = ArraySegment(buf)
+            let tk = Async.DefaultCancellationToken
+            let r =  Async.AwaitTask(ws.ReceiveAsync(buffer, tk)) |> Async.RunSynchronously
+            if not r.EndOfMessage then failwith "too lazy to receive more!"
+            let resp = Encoding.UTF8.GetString(buf, 0, r.Count)
+            if resp <> "" then
+                printfn "WebSocket received: %s" resp
+            else
+                printfn "Received empty response from server"
+    } |> Async.Start
+
+let SocketListener (mailbox: Actor<_>) =
+    let rec loop() = actor {
+        let! msg = mailbox.Receive()
+        printfn "Kuch to aya"
+        // For every number, check if it can form a Luca's pyramid of size k
+        match msg with
+        | Listen(ws) ->
+            printfn "Client: Socket Started Listening"
+            read ws
+        // | "Loop2" ->
+        //   // while true do
+        //   //   System.Threading.Thread.Sleep(500);
+        //   //   printfn "Loop1 running..."
+        //     printfn "Loop2 just ran...====================================="
+        // | _ ->
+        //   printfn "None matched"
+        return! loop()
+    }
+    loop()
+
+let connectAndReset(port: int) (uid:string)= async {
+    let ws = new ClientWebSocket()
+    do! connect port uid ws
+    System.Threading.Thread.Sleep(100)    
+    do! send ("Hello from "+uid) ws
+    // close ws |> ignore
+    let listener = spawn system ("listener"+uid) SocketListener
+    listener <! Listen(ws)
+}
+
 let Client (mailbox: Actor<_>) =
     let mutable id,pwd="",""
-    // let serverActor = select "/user/server" serverActorRef
-    // serverActor <! Testing
-    // serverActorRef <! Testing
     let rec loop() = actor {
         let! msg = mailbox.Receive()
         match msg with
@@ -47,6 +110,12 @@ let Client (mailbox: Actor<_>) =
             printfn "Response from server: %s" resp
         | Login -> 
             let resp = TwitterApiCall loginUrl "POST" (sprintf """{"Uid":"%s", "Password":"%s"}""" id pwd)
+            printfn "Response from server: %s" resp
+        | InitSocket -> 
+            let resp = TwitterApiCall (socketUrl + "/" + id) "GET" ""
+            System.Threading.Thread.Sleep(100)    
+            connectAndReset 8080 id |> ignore
+
             printfn "Response from server: %s" resp
             // serverActor<! SignIn(id,pwd)
         // | Logout -> 

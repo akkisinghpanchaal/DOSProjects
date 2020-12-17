@@ -25,9 +25,9 @@ type ClientMsgs =
 let create() = new ClientWebSocket()
 let system = ActorSystem.Create("TwitterClient")
 
-let connect (port: int) (ws: ClientWebSocket) = 
+let connect (port: int) (uid: string) (ws: ClientWebSocket) = 
     let tk = Async.DefaultCancellationToken
-    Async.AwaitTask(ws.ConnectAsync(Uri(sprintf "ws://127.0.0.1:%d/websocket" port), tk))
+    Async.AwaitTask(ws.ConnectAsync(Uri(sprintf "ws://127.0.0.1:%d/websocket/%s" port uid), tk))
 
 let close (ws: ClientWebSocket) =
     let tk = Async.DefaultCancellationToken
@@ -81,15 +81,15 @@ let SocketListener (mailbox: Actor<_>) =
         //   //   System.Threading.Thread.Sleep(500);
         //   //   printfn "Loop1 running..."
         //     printfn "Loop2 just ran...====================================="
-        | _ ->
-          printfn "None matched"
+        // | _ ->
+        //   printfn "None matched"
         return! loop()
     }
     loop()
 
-let connectAndReset(port: int) = async {
+let connectAndReset(port: int) (uid:string)= async {
     let ws = new ClientWebSocket()
-    do! connect port ws
+    do! connect port uid ws
     System.Threading.Thread.Sleep(100)    
     do! send "Hello" ws// |> ignore
     // let resp = read ws |> Async.RunSynchronously 
@@ -98,7 +98,6 @@ let connectAndReset(port: int) = async {
     // printf "%A" resp
     // close ws |> ignore
     // return! read ws
-    printfn "yesdf g asdoif"
     let listener = spawn system "listener" SocketListener
     listener <! Listen(ws)
     // while true do
@@ -126,13 +125,15 @@ let pl = """{"Uid"="Rajat","Password"="lassan"}"""
 //             |> Request.responseAsString
 //             |> run
 
-connectAndReset(8080) |> Async.RunSynchronously
 
-let resp = Http.RequestString( "http://localhost:8080/", httpMethod = "GET")
-printfn "%A" resp
+// let resp = Http.RequestString( "http://localhost:8080/", httpMethod = "GET")
+// printfn "%A" resp
 
 let resp2 = Http.RequestString( "http://localhost:8080/login", httpMethod = "POST",
                 body = TextRequest """ {"Uid": "rajat", "Password":"lassan"} """)
                 // headers = [ "Accept", "application/json" ])
 printfn "%A" resp2
+
+connectAndReset 8080 "rajat" |> Async.RunSynchronously
+
 System.Console.ReadKey() |> ignore

@@ -9,9 +9,9 @@
     <Compile Include="tweet.fs" />
     <Compile Include="user.fs" />
     <Compile Include="custom_types.fs" />
-    <Compile Include="global_data.fsx" />
-    <Compile Include="server.fsx" />
-    <Compile Include="Program.fs" />
+    <Compile Include="global_data.fs" />
+    <Compile Include="server.fs" />
+    <!-- <Compile Include="Program.fs" /> -->
   </ItemGroup>
 
   <ItemGroup>

@@ -3,19 +3,13 @@
 // #r "nuget: Akka.TestKit" 
 
 
-open System
 open Suave
-open Suave.Http
 open Suave.Operators
 open Suave.Filters
 open Suave.Successful
-open Suave.Files
 open Suave.RequestErrors
 open Suave.Logging
-open Suave.Utils
 
-open System
-open System.Net
 
 open Suave.Sockets
 open Suave.Sockets.Control
@@ -24,9 +18,7 @@ open Newtonsoft.Json
 open Newtonsoft.Json.Serialization
 
 open Akka.Actor
-open Akka.Configuration
 open Akka.FSharp
-open Akka.TestKit
 
 
 type ServerMsg =
@@ -34,7 +26,7 @@ type ServerMsg =
   | Loop1
   | Loop2
 
-let mutable myws:WebSocket array = Array.empty
+let mutable myws: Map<string, WebSocket> = Map.empty
 
 // *********** WORKER ACTOR LOGIC **********
 let WorkerActor (mailbox: Actor<_>) =
@@ -69,80 +61,26 @@ let WorkerActor (mailbox: Actor<_>) =
 let system = ActorSystem.Create("Twitter")
 let server = spawn system "server" WorkerActor
 
-let ws (webSocket : WebSocket) (context: HttpContext) =
-  socket {
-    // if `loop` is set to false, the server will stop receiving messages
-    let mutable loop = true
-    myws <- [|webSocket|]
-    printfn "web socket is: %A" webSocket
-    while loop do
-      // the server will wait for a message to be received without blocking the thread
-      let! msg = webSocket.read()
 
-      match msg with
-      // the message has type (Opcode * byte [] * bool)
-      //
-      // Opcode type:
-      //   type Opcode = Continuation | Text | Binary | Reserved | Close | Ping | Pong
-      //
-      // byte [] contains the actual message
-      //
-      // the last element is the FIN byte, explained later
-      | (Text, data, true) ->
-        // the message can be converted to a string
-        let str = UTF8.toString data
-        printfn "printing response"
-        printfn "response to %s" str
-        let response = sprintf "response to %s" str
-
-        // the response needs to be converted to a ByteSegment
-        let byteResponse =
-          response
-          |> System.Text.Encoding.ASCII.GetBytes
-          |> ByteSegment
-
-        do! webSocket.send Text byteResponse true
-
-        // the `send` function sends a message back to the client
-        // let mutable inp = ""
-        // while inp <> "exit" do
-        //   inp <- System.Console.ReadLine()
-        //   do! webSocket.send Text byteResponse true
-        // System.Threading.Thread.Sleep(10)    
-        // do! webSocket.send Text byteResponse true
-        // System.Threading.Thread.Sleep(10)    
-        // do! webSocket.send Text byteResponse true
-        // System.Threading.Thread.Sleep(10)    
-        // do! webSocket.send Text byteResponse true
-      | (Close, _, _) ->
-        let emptyResponse = [||] |> ByteSegment
-        do! webSocket.send Close emptyResponse true
-
-        // after sending a Close message, stop the loop
-        loop <- false
-
-      | _ -> ()
-    }
-
-/// An example of explictly fetching websocket errors and handling them in your codebase.
-let wsWithErrorHandling (webSocket : WebSocket) (context: HttpContext) = 
+// /// An example of explictly fetching websocket errors and handling them in your codebase.
+// let wsWithErrorHandling (webSocket : WebSocket) (context: HttpContext) = 
    
-   let exampleDisposableResource = { new IDisposable with member __.Dispose() = printfn "Resource needed by websocket connection disposed" }
-   let websocketWorkflow = ws webSocket context
+//    let exampleDisposableResource = { new IDisposable with member __.Dispose() = printfn "Resource needed by websocket connection disposed" }
+//    let websocketWorkflow = ws webSocket context
    
-   async {
-    let! successOrError = websocketWorkflow
-    match successOrError with
-    // Success case
-    | Choice1Of2() -> ()
-    // Error case
-    | Choice2Of2(error) ->
-        // Example error handling logic here
-        printfn "Error: [%A]" error
-        exampleDisposableResource.Dispose()
+//    async {
+//     let! successOrError = websocketWorkflow
+//     match successOrError with
+//     // Success case
+//     | Choice1Of2() -> ()
+//     // Error case
+//     | Choice2Of2(error) ->
+//         // Example error handling logic here
+//         printfn "Error: [%A]" error
+//         exampleDisposableResource.Dispose()
         
-    return successOrError
-   }
+//     return successOrError
+//    }
 
 type Credentials = {
     Uid: string
@@ -182,19 +120,74 @@ let loginUser (req: HttpRequest) =
     //     OK "maa chuda!"
     let task = server <? Login(creds.Uid, creds.Password)
     let resp = Async.RunSynchronously(task)
-    let wresp = (resp:string)
-                  |> System.Text.Encoding.ASCII.GetBytes
-                  |> ByteSegment
-    printfn "Sending a websocket message..."
-    let x = (myws.[0].send Text wresp true) |> Async.RunSynchronously
+    // let wresp = (resp:string)
+    //               |> System.Text.Encoding.ASCII.GetBytes
+    //               |> ByteSegment
+    // printfn "Sending a websocket message..."
+    // let x = (myws.[creds.Uid].send Text wresp true) |> Async.RunSynchronously
     OK resp
+
+let webSocketFactory (input: string) = 
+  let ws (webSocket : WebSocket) (context: HttpContext) =
+    socket {
+      // if `loop` is set to false, the server will stop receiving messages
+      let mutable loop = true
+      myws <- myws.Add(input,webSocket)
+      printfn "web socket is: %A" webSocket
+      while loop do
+        // the server will wait for a message to be received without blocking the thread
+        let! msg = webSocket.read()
+
+        match msg with
+        // the message has type (Opcode * byte [] * bool)
+        //
+        // Opcode type:
+        //   type Opcode = Continuation | Text | Binary | Reserved | Close | Ping | Pong
+        //
+        // byte [] contains the actual message
+        //
+        // the last element is the FIN byte, explained later
+        | (Text, data, true) ->
+          // the message can be converted to a string
+          let str = UTF8.toString data
+          printfn "printing response"
+          printfn "response to %s" str
+          let response = sprintf "response to %s" str
+
+          // the response needs to be converted to a ByteSegment
+          let byteResponse =
+            response
+            |> System.Text.Encoding.ASCII.GetBytes
+            |> ByteSegment
+
+          do! webSocket.send Text byteResponse true
+
+          // the `send` function sends a message back to the client
+          // let mutable inp = ""
+          // while inp <> "exit" do
+          //   inp <- System.Console.ReadLine()
+          //   do! webSocket.send Text byteResponse true
+          // System.Threading.Thread.Sleep(10)    
+          // do! webSocket.send Text byteResponse true
+          // System.Threading.Thread.Sleep(10)    
+          // do! webSocket.send Text byteResponse true
+          // System.Threading.Thread.Sleep(10)    
+          // do! webSocket.send Text byteResponse true
+        | (Close, _, _) ->
+          let emptyResponse = [||] |> ByteSegment
+          do! webSocket.send Close emptyResponse true
+
+          // after sending a Close message, stop the loop
+          loop <- false
+
+        | _ -> ()
+      }
+  ws
 
 
 let app = 
     choose [
-        path "/websocket" >=> handShake ws
-        path "/websocketWithSubprotocol" >=> handShakeWithSubprotocol (chooseSubprotocol "test") ws
-        path "/websocketWithError" >=> handShake wsWithErrorHandling
+        pathScan "/websocket/%s" (fun s -> (webSocketFactory s |> handShake) )
         GET >=> choose [ path "/" >=> OK "index" ]
         POST >=> choose
             [ 

@@ -1,8 +1,5 @@
 module GlobalDataMod
 
-#load @"user.fs"
-#load @"tweet.fs"
-
 open UserMod
 open TweetMod
 

@@ -1,5 +1,10 @@
 module CustomTypesMod
 
+type Credentials = {
+    Uid: string
+    Password: string
+}
+
 type QueryType = 
     | MyMentions
     | Subscribed
@@ -45,6 +50,7 @@ type ServerApi =
 type ClientApi =
     | Login
     | Logout
+    | InitSocket
     | GetMentions
     | GetSubscribed
     | GetHashtags of string

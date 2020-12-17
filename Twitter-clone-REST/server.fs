@@ -1,21 +1,27 @@
 module ServerMod
 
-#load @"user.fs"
-#load @"tweet.fs"
-#load @"custom_types.fs"
-#load @"global_data.fsx"
-
-// #r "nuget: Akka.FSharp" 
-// #r "nuget: Akka.TestKit"
-
 open System
 open Akka.Actor
 open Akka.FSharp
 open CustomTypesMod
 open GlobalDataMod
 open UserMod
+open Newtonsoft.Json
+open Newtonsoft.Json.Serialization
+open Suave
+open Suave.Operators
+open Suave.Filters
+open Suave.Successful
+open Suave.RequestErrors
+open Suave.Logging
+
+open Suave.Sockets
+open Suave.Sockets.Control
+open Suave.WebSocket
 
 
+
+let mutable myws: Map<string, WebSocket> = Map.empty
 let mutable globalData = GlobalData()
 
 let userExists (username:string) = 
@@ -124,6 +130,11 @@ let findTweets (username: string) (searchType: QueryType) =
             response <-"User " + username + " does not exist in the database."
             response, status, [||]
 // ------------------------------------------------------------------------------
+//move to appropriate place
+let getBytes (msg:string) =
+            msg
+            |> System.Text.Encoding.ASCII.GetBytes
+            |> ByteSegment
 
 let Server (mailbox: Actor<_>) =
     let mutable loggedInUserToClientMap: Map<string, IActorRef> = Map.empty
@@ -131,18 +142,19 @@ let Server (mailbox: Actor<_>) =
         let! msg = mailbox.Receive()
         match msg with
         | SignUp(username,pwd) ->
-            let response, status = signUpUser username pwd
-            mailbox.Sender() <! response
+            mailbox.Sender() <! signUpUser username pwd
         | SignIn(username, pwd) ->
             let response, status = signInUser username pwd
             if status then
                 loggedInUserToClientMap <- loggedInUserToClientMap.Add(username, mailbox.Sender())
-            mailbox.Sender() <! response
+            mailbox.Sender() <! (response, status)
+            System.Threading.Thread.Sleep(700)    
+            myws.[username].send Text (getBytes "Hello from the other side") true |> ignore
         | SignOut(username) ->
             let response, status = signOutUser username
             if status then
                 loggedInUserToClientMap <- loggedInUserToClientMap.Remove(username)
-            mailbox.Sender() <! response
+            mailbox.Sender() <! (response, status)
         | RegisterTweet(senderUser, content) ->
             let response, status, tweetID = distributeTweet senderUser content false -1
             if status then
@@ -178,7 +190,135 @@ let Server (mailbox: Actor<_>) =
             mailbox.Sender() <! ApiDataResponse(response, status, data)
         | ShowData ->
             printfn "%A\n%A\n%A\n%A" globalData.Users globalData.LoggedInUsers globalData.Tweets globalData.Hashtags
-        | _ -> failwith "Error!"
+        | _ -> failwith "Error"
         return! loop()
     }
     loop()
+
+let system = ActorSystem.Create("TwitterServer")
+let server = spawn system "server" Server
+
+// -------------------------------REST+SOCKET-----------------------------------
+// ------------------------------------------------------------------------------
+let JSON v =
+    let jsonSerializerSettings = JsonSerializerSettings()
+    jsonSerializerSettings.ContractResolver <- CamelCasePropertyNamesContractResolver()
+
+    JsonConvert.SerializeObject(v, jsonSerializerSettings)
+    |> OK
+    >=> Writers.setMimeType "application/json; charset=utf-8"
+
+let fromJson<'a> json =
+  JsonConvert.DeserializeObject(json, typeof<'a>) :?> 'a
+
+let getCredsFromJsonString json =
+  JsonConvert.DeserializeObject(json, typeof<Credentials>) :?> Credentials
+
+
+let getString (rawForm: byte[]) = System.Text.Encoding.UTF8.GetString(rawForm)
+
+let getResourceFromReq<'a> (req : HttpRequest) =
+    let getString (rawForm: byte[]) = System.Text.Encoding.UTF8.GetString(rawForm)
+    req.rawForm |> getString |> fromJson<'a>
+
+let parseCreds (req : HttpRequest) =
+    req.rawForm |> getString |> getCredsFromJsonString
+
+
+let registerUser (req: HttpRequest) = 
+    let creds = parseCreds req
+    let task = server <? SignUp(creds.Uid, creds.Password)
+    let resp, status = Async.RunSynchronously(task)
+    if status then
+        OK resp
+    else
+        NOT_ACCEPTABLE resp
+
+let loginUser (req: HttpRequest) = 
+    let creds = parseCreds req
+    let task = server <? SignIn(creds.Uid, creds.Password)
+    let resp, status = Async.RunSynchronously(task)
+    if status then
+        OK resp
+    else
+        NOT_ACCEPTABLE resp
+
+let webSocketFactory (input: string) = 
+  let ws (webSocket : WebSocket) (context: HttpContext) =
+    socket {
+      // if `loop` is set to false, the server will stop receiving messages
+      let mutable loop = true
+      myws <- myws.Add(input,webSocket)
+      printfn "web socket is: %A" webSocket
+      while loop do
+        // the server will wait for a message to be received without blocking the thread
+        let! msg = webSocket.read()
+
+        match msg with
+        // the message has type (Opcode * byte [] * bool)
+        //
+        // Opcode type:
+        //   type Opcode = Continuation | Text | Binary | Reserved | Close | Ping | Pong
+        //
+        // byte [] contains the actual message
+        //
+        // the last element is the FIN byte, explained later
+        | (Text, data, true) ->
+          // the message can be converted to a string
+          let str = UTF8.toString data
+          printfn "printing response"
+          printfn "response to %s" str
+          let response = sprintf "response to %s" str
+
+          // the response needs to be converted to a ByteSegment
+          let byteResponse =
+            response
+            |> System.Text.Encoding.ASCII.GetBytes
+            |> ByteSegment
+
+          do! webSocket.send Text byteResponse true
+
+          // the `send` function sends a message back to the client
+          // let mutable inp = ""
+          // while inp <> "exit" do
+          //   inp <- System.Console.ReadLine()
+          //   do! webSocket.send Text byteResponse true
+          // System.Threading.Thread.Sleep(10)    
+          // do! webSocket.send Text byteResponse true
+          // System.Threading.Thread.Sleep(10)    
+          // do! webSocket.send Text byteResponse true
+          // System.Threading.Thread.Sleep(10)    
+          // do! webSocket.send Text byteResponse true
+        | (Close, _, _) ->
+          let emptyResponse = [||] |> ByteSegment
+          do! webSocket.send Close emptyResponse true
+
+          // after sending a Close message, stop the loop
+          loop <- false
+
+        | _ -> ()
+      }
+  ws
+
+
+let app = 
+    choose [
+        // pathScan "/websocket/%s" (fun s -> (webSocketFactory s |> handShake) )
+        GET >=> choose [ 
+            path "/" >=> OK "index"
+            path "/debug" >=> warbler (fun ctx -> OK (sprintf "Total Sockets in map %d" myws.Count))
+            pathScan "/websocket/%s" (fun s -> ((webSocketFactory s |> handShake) >=> (OK ("Socket Success for "+s))))
+            ]
+        POST >=> choose
+            [ 
+                path "/hello" >=> OK "Hello POST!"
+                path "/register" >=> request registerUser
+                path "/login" >=> request loginUser
+                 ]
+        NOT_FOUND "Found no handlers." ]
+
+[<EntryPoint>]
+let main argv =
+    printfn "Hello World from F#!"
+    startWebServer { defaultConfig with logger = Targets.create Verbose [||] } app
+    0 // return an integer exit code
