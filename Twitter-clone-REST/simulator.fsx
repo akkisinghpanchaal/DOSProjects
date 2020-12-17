@@ -77,13 +77,6 @@ let Simulator (mailbox: Actor<_>) =
         let! msg = mailbox.Receive()
         match msg with
         | Init(totalUsrs, maxSubs, maxTwts) ->
-            // let cl = spawn system "testclient" Client
-            // cl <! Register("rajatrai", "lassan")
-            // cl <! Login
-            // cl <! InitSocket
-            // tweetCountUsers <- Array.zeroCreate totalUsers
-
-
             caller <- mailbox.Sender()
             totalUsers <- totalUsrs
             maxSubscribers <- maxSubs
@@ -109,14 +102,7 @@ let Simulator (mailbox: Actor<_>) =
                 userActors.[i] <! Register(makeUserId(i),randomStr 12)
             totalTasks<-userActors.Length*2
 
-            // giving some time for signing up all the users
-
-            // login all the users signed up
-            // this could be changed to simulate periodic active span of users.
-            // for i in 0..(userActors.Length-1) do
-            
-            // creating a zipf distribution of subscribers.
-            // The max count of subscribers is passed from the command line
+           
             let mutable followingSize = 0
             let mutable userStr = ""
             let mutable tweetCount = 0
@@ -129,8 +115,26 @@ let Simulator (mailbox: Actor<_>) =
                 printfn "%s" userStr
                 followingSize <- followingSizes.[userNum]
                 userActors.[userNum] <! Login
-                userActors.[userNum] <! InitSocket
 
+            
+            // System.Threading.Thread.Sleep(100)    
+
+            // for userNum in 0..(totalUsers-1) do
+                // userActors.[userNum] <! InitSocket
+
+            System.Threading.Thread.Sleep(10000)    
+
+            // for userNum in 0..(totalUsers-1) do
+                // userActors.[userNum] <! Logout
+                
+            // giving some time for signing up all the users
+
+            // login all the users signed up
+            // this could be changed to simulate periodic active span of users.
+            // for i in 0..(userActors.Length-1) do
+            
+            // creating a zipf distribution of subscribers.
+            // The max count of subscribers is passed from the command line
         //         for _ in 1..followingSize do
         //             let mutable randUser = getRandomUser userNum totalUsers
         //             // check if the user is already followed

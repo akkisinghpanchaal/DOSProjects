@@ -21,7 +21,7 @@ open Suave.WebSocket
 
 
 
-let mutable myws: Map<string, WebSocket> = Map.empty
+let mutable clientWsDict: Map<string, WebSocket> = Map.empty
 let mutable globalData = GlobalData()
 
 let userExists (username:string) = 
@@ -148,10 +148,9 @@ let Server (mailbox: Actor<_>) =
             if status then
                 loggedInUserToClientMap <- loggedInUserToClientMap.Add(username, mailbox.Sender())
             mailbox.Sender() <! (response, status)
-            System.Threading.Thread.Sleep(700)    
-            myws.[username].send Text (getBytes "Hello from the other side") true |> ignore
         | SignOut(username) ->
             let response, status = signOutUser username
+            printfn "%s %b User : %s" response status username
             if status then
                 loggedInUserToClientMap <- loggedInUserToClientMap.Remove(username)
             mailbox.Sender() <! (response, status)
@@ -243,13 +242,27 @@ let loginUser (req: HttpRequest) =
     else
         NOT_ACCEPTABLE resp
 
-let webSocketFactory (input: string) = 
+let logoutUser (req: HttpRequest) = 
+    let creds = parseCreds req
+    let task = server <? SignOut(creds.Uid)
+    let resp, status = Async.RunSynchronously(task)
+    
+    // clientWsDict.[creds.Uid].send Close (getBytes "END") false |> ignore
+    clientWsDict <- clientWsDict.Remove(creds.Uid)
+    if status then
+        printfn "\n\n Sending %s" "OK"
+        OK resp
+    else
+        printfn "\n\n Sending %s" "MAA CHUDA LO"
+        NOT_ACCEPTABLE resp
+
+let webSocketFactory (uid: string) = 
   let ws (webSocket : WebSocket) (context: HttpContext) =
     socket {
       // if `loop` is set to false, the server will stop receiving messages
       let mutable loop = true
-      myws <- myws.Add(input,webSocket)
-      printfn "web socket is: %A" webSocket
+      clientWsDict <- clientWsDict.Add(uid,webSocket)
+      printfn "web socket stored for: %s | total: %d | total logged in Users: %d" uid clientWsDict.Count globalData.LoggedInUsers.Count
       while loop do
         // the server will wait for a message to be received without blocking the thread
         let! msg = webSocket.read()
@@ -266,9 +279,8 @@ let webSocketFactory (input: string) =
         | (Text, data, true) ->
           // the message can be converted to a string
           let str = UTF8.toString data
-          printfn "printing response"
-          printfn "response to %s" str
-          let response = sprintf "response to %s" str
+          printfn "responding to %s -> %s"  uid str
+          let response = sprintf "Hi from clientSocket-%s" uid
 
           // the response needs to be converted to a ByteSegment
           let byteResponse =
@@ -276,20 +288,11 @@ let webSocketFactory (input: string) =
             |> System.Text.Encoding.ASCII.GetBytes
             |> ByteSegment
 
+          // the `send` function sends a message back to the client
           do! webSocket.send Text byteResponse true
 
-          // the `send` function sends a message back to the client
-          // let mutable inp = ""
-          // while inp <> "exit" do
-          //   inp <- System.Console.ReadLine()
-          //   do! webSocket.send Text byteResponse true
-          // System.Threading.Thread.Sleep(10)    
-          // do! webSocket.send Text byteResponse true
-          // System.Threading.Thread.Sleep(10)    
-          // do! webSocket.send Text byteResponse true
-          // System.Threading.Thread.Sleep(10)    
-          // do! webSocket.send Text byteResponse true
         | (Close, _, _) ->
+          printfn "CLOSING SOCKET SERVER"
           let emptyResponse = [||] |> ByteSegment
           do! webSocket.send Close emptyResponse true
 
@@ -306,7 +309,7 @@ let app =
         // pathScan "/websocket/%s" (fun s -> (webSocketFactory s |> handShake) )
         GET >=> choose [ 
             path "/" >=> OK "index"
-            path "/debug" >=> warbler (fun ctx -> OK (sprintf "Total Sockets in map %d" myws.Count))
+            path "/debug" >=> warbler (fun ctx -> OK (sprintf "Total Sockets in map %d" clientWsDict.Count))
             pathScan "/websocket/%s" (fun s -> ((webSocketFactory s |> handShake) >=> (OK ("Socket Success for "+s))))
             ]
         POST >=> choose
@@ -314,6 +317,7 @@ let app =
                 path "/hello" >=> OK "Hello POST!"
                 path "/register" >=> request registerUser
                 path "/login" >=> request loginUser
+                path "/logout" >=> request logoutUser
                  ]
         NOT_FOUND "Found no handlers." ]
 

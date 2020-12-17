@@ -21,6 +21,7 @@ open FSharp.Data
 let twitterHostUrl = "http://localhost:8080"
 
 let loginUrl = twitterHostUrl + "/login"
+let logoutUrl = twitterHostUrl + "/logout"
 let signUpUrl = twitterHostUrl + "/register"
 let socketUrl = twitterHostUrl + "/websocket"
 
@@ -44,7 +45,8 @@ let connect (port: int) (uid: string) (ws: ClientWebSocket) =
 
 let close (ws: ClientWebSocket) =
     let tk = Async.DefaultCancellationToken
-    Async.AwaitTask(ws.CloseOutputAsync(WebSocketCloseStatus.NormalClosure, "END", tk))
+    Async.AwaitTask(ws.CloseAsync(WebSocketCloseStatus.NormalClosure, "Close", tk))
+    // Async.AwaitTask(ws.SendAsync(ArraySegment(Encoding.UTF8.GetBytes ""), WebSocketMessageType.Close, true, tk))
 
 let send (str: string) (ws: ClientWebSocket) =
     let req = Encoding.UTF8.GetBytes str
@@ -62,7 +64,7 @@ let read (ws: ClientWebSocket) =
             if not r.EndOfMessage then failwith "too lazy to receive more!"
             let resp = Encoding.UTF8.GetString(buf, 0, r.Count)
             if resp <> "" then
-                printfn "WebSocket received: %s" resp
+                printfn "WebSocket: %s" resp
             else
                 printfn "Received empty response from server"
     } |> Async.Start
@@ -70,25 +72,16 @@ let read (ws: ClientWebSocket) =
 let SocketListener (mailbox: Actor<_>) =
     let rec loop() = actor {
         let! msg = mailbox.Receive()
-        printfn "Kuch to aya"
-        // For every number, check if it can form a Luca's pyramid of size k
+        // printfn "    Kuch to aya"
         match msg with
         | Listen(ws) ->
-            printfn "Client: Socket Started Listening"
+            // printfn "Client: Socket Started Listening"
             read ws
-        // | "Loop2" ->
-        //   // while true do
-        //   //   System.Threading.Thread.Sleep(500);
-        //   //   printfn "Loop1 running..."
-        //     printfn "Loop2 just ran...====================================="
-        // | _ ->
-        //   printfn "None matched"
         return! loop()
     }
     loop()
 
-let connectAndReset(port: int) (uid:string)= async {
-    let ws = new ClientWebSocket()
+let connectAndPing (ws: ClientWebSocket)(port: int) (uid:string)= async {
     do! connect port uid ws
     System.Threading.Thread.Sleep(100)    
     do! send ("Hello from "+uid) ws
@@ -99,6 +92,7 @@ let connectAndReset(port: int) (uid:string)= async {
 
 let Client (mailbox: Actor<_>) =
     let mutable id,pwd="",""
+    let ws = new ClientWebSocket()
     let rec loop() = actor {
         let! msg = mailbox.Receive()
         match msg with
@@ -111,15 +105,17 @@ let Client (mailbox: Actor<_>) =
         | Login -> 
             let resp = TwitterApiCall loginUrl "POST" (sprintf """{"Uid":"%s", "Password":"%s"}""" id pwd)
             printfn "Response from server: %s" resp
+            select ("/user/"+id) system <! InitSocket
         | InitSocket -> 
             let resp = TwitterApiCall (socketUrl + "/" + id) "GET" ""
-            System.Threading.Thread.Sleep(100)    
-            connectAndReset 8080 id |> ignore
-
+            connectAndPing ws 8080 id |> Async.RunSynchronously
             printfn "Response from server: %s" resp
-            // serverActor<! SignIn(id,pwd)
-        // | Logout -> 
-        //     serverActor<! SignOut(id)
+        | Logout -> 
+            let resp = TwitterApiCall logoutUrl "POST" (sprintf """{"Uid":"%s", "Password":"%s"}""" id "")
+            printfn "Response from server: %s" resp
+            close ws |> Async.RunSynchronously
+            // send "CLOSE" ws |> Async.RunSynchronously
+            // send ws |> Async.RunSynchronously
         // | GetMentions ->
         //     serverActor <! FindMentions(id)
         // | GetSubscribed ->
