@@ -39,14 +39,20 @@ let send (str: string) (ws: ClientWebSocket) =
     Async.AwaitTask(ws.SendAsync(ArraySegment(req), WebSocketMessageType.Text, true, tk))
 
 let read (ws: ClientWebSocket) = 
+    let loop = true
     async {
-        let buf = Array.zeroCreate 4096
-        let buffer = ArraySegment(buf)
-        let tk = Async.DefaultCancellationToken
-        let r =  Async.AwaitTask(ws.ReceiveAsync(buffer, tk)) |> Async.RunSynchronously
-        if not r.EndOfMessage then failwith "too lazy to receive more!"
-        return Encoding.UTF8.GetString(buf, 0, r.Count)
-    }
+        while loop do
+            let buf = Array.zeroCreate 4096
+            let buffer = ArraySegment(buf)
+            let tk = Async.DefaultCancellationToken
+            let r =  Async.AwaitTask(ws.ReceiveAsync(buffer, tk)) |> Async.RunSynchronously
+            if not r.EndOfMessage then failwith "too lazy to receive more!"
+            let resp = Encoding.UTF8.GetString(buf, 0, r.Count)
+            if resp <> "" then
+                printfn "WebSocket received: %s" resp
+            else
+                printfn "Received empty response from server"
+    } |> Async.Start
 
 // let reset = send "{\"Case\":\"Reset\"}"
 
@@ -69,19 +75,7 @@ let SocketListener (mailbox: Actor<_>) =
         match msg with
         | Listen(ws) ->
             printfn "listen key andat aya"
-            let readNshow() = async {
-                printfn "-==-=-================="
-                let resp = read ws |> Async.RunSynchronously
-                printfn "this is some response: %A" resp
-                return resp
-            }
-            while true do
-                // printfn "sfsdfsdfsdf"
-                let x = readNshow()
-                // printfn "%A" x
-                ()
-                // if x <> "" then
-                //     printfn "yo"
+            read ws
         // | "Loop2" ->
         //   // while true do
         //   //   System.Threading.Thread.Sleep(500);
@@ -96,7 +90,7 @@ let SocketListener (mailbox: Actor<_>) =
 let connectAndReset(port: int) = async {
     let ws = new ClientWebSocket()
     do! connect port ws
-    // System.Threading.Thread.Sleep(100)    
+    System.Threading.Thread.Sleep(100)    
     do! send "Hello" ws// |> ignore
     // let resp = read ws |> Async.RunSynchronously 
     // printf "%A" resp

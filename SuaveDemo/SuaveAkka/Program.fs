@@ -74,6 +74,7 @@ let ws (webSocket : WebSocket) (context: HttpContext) =
     // if `loop` is set to false, the server will stop receiving messages
     let mutable loop = true
     myws <- [|webSocket|]
+    printfn "web socket is: %A" webSocket
     while loop do
       // the server will wait for a message to be received without blocking the thread
       let! msg = webSocket.read()
@@ -142,6 +143,7 @@ let wsWithErrorHandling (webSocket : WebSocket) (context: HttpContext) =
         
     return successOrError
    }
+
 type Credentials = {
     Uid: string
     Password: string
@@ -184,7 +186,7 @@ let loginUser (req: HttpRequest) =
                   |> System.Text.Encoding.ASCII.GetBytes
                   |> ByteSegment
     printfn "Sending a websocket message..."
-    myws.[0].send Text wresp true |> ignore
+    let x = (myws.[0].send Text wresp true) |> Async.RunSynchronously
     OK resp
 
 
