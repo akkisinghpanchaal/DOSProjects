@@ -66,10 +66,10 @@ let distributeTweet (username: string) (content: string) (isRetweeted: bool) (pa
     else
         if not isRetweeted then
             tweetID <- globalData.AddTweet content username
-            response <- "Tweet registered successfully"
+            response <- sprintf "Tweet %d registered successfully" tweetID
         else
             tweetID <- globalData.AddReTweet content username parentTweetId
-            response <- "ReTweet registered successfully"
+            response <- sprintf "ReTweet %d registered successfully" tweetID
         status<-true
     response, status, tweetID
 
@@ -84,20 +84,16 @@ let signOutUser (username:string) =
     response, status
 
 let followAccount (followerUsername: string) (followedUsername: string) =
-    // printfn "followerUserName: %s | followedUserName: %s" followerUsername followedUsername
     let mutable response, status = "", false
-    // printfn "Follow stage 1"
     if globalData.Users.ContainsKey followedUsername then 
         globalData.Users.[followedUsername].AddToFollowers(followerUsername)
-    // printfn "Follow stage 2"
     if globalData.Users.ContainsKey followerUsername then 
         globalData.Users.[followerUsername].AddToFollowings(followedUsername)
-    // printfn "Follow stage 3"
     response <- "User " + followerUsername + " started following user " + followedUsername
     status <- true
     response, status
 
-let findHashtags (username: string)(searchTerm: string) =
+let findHashtags (searchTerm: string) =
     let mutable response, status = "", false
     let data  = [|for tweetId in globalData.Hashtags.[searchTerm] do yield (globalData.Tweets.[tweetId].Creator ,globalData.Tweets.[tweetId].Content)|]
     status <- true
@@ -124,7 +120,9 @@ let findTweets (username: string) (searchType: QueryType) =
     | QueryType.Subscribed ->
         if (globalData.Users.ContainsKey username) && (globalData.LoggedInUsers.Contains username) then
             status <- true
-            let data = [|for tweetId in globalData.Users.[username].Tweets do yield (globalData.Tweets.[tweetId].Creator ,globalData.Tweets.[tweetId].Content)|]
+            let data = [|for followed in globalData.Users.[username].Following do 
+                            for tweetId in globalData.Users.[followed].Tweets do 
+                                yield (globalData.Tweets.[tweetId].Creator ,globalData.Tweets.[tweetId].Content)|]
             response <- "Successfully retrieved " + string data.Length + " tweets."
             response, status, data
         elif not (globalData.LoggedInUsers.Contains username) then
@@ -135,8 +133,8 @@ let findTweets (username: string) (searchType: QueryType) =
             status <- false
             response <-"User " + username + " does not exist in the database."
             response, status, [||]
+
 // ------------------------------------------------------------------------------
-//move to appropriate place
 let getBytes (msg:string) =
             msg
             |> System.Text.Encoding.ASCII.GetBytes
@@ -162,40 +160,47 @@ let Server (mailbox: Actor<_>) =
             mailbox.Sender() <! (response, status)
         | RegisterTweet(senderUser, content) ->
             let response, status, tweetID = distributeTweet senderUser content false -1
-            // if status then
-            //     let tweet = globalData.Tweets.[tweetID]
-            //     for mentioned in tweet.Mentions do
-            //         if globalData.IsUserLoggedIn mentioned then
-            //             loggedInUserToClientMap.[mentioned] <! LiveFeed(tweet.Creator, tweet.Content)
-            //     let followers = globalData.Users.[tweet.Creator].Followers
-            //     for follower in followers do
-            //         if globalData.IsUserLoggedIn follower then
-            //             loggedInUserToClientMap.[follower] <! LiveFeed(tweet.Creator, tweet.Content)
+            if status then
+                let tweet = globalData.Tweets.[tweetID]
+                for mentioned in tweet.Mentions do
+                    if globalData.IsUserLoggedIn mentioned then
+                        clientWsDict.[mentioned].send Text (getBytes (sprintf "User '%s' mentioned you in a tweet [#%d]: %s" tweet.Creator tweetID tweet.Content)) true 
+                        |> Async.RunSynchronously |> ignore
+                let followers = globalData.Users.[tweet.Creator].Followers
+                for follower in followers do
+                    if globalData.IsUserLoggedIn follower then
+                        clientWsDict.[follower].send Text (getBytes (sprintf "User '%s' tweeted [#%d]: %s" tweet.Creator tweetID tweet.Content)) true 
+                        |> Async.RunSynchronously |> ignore
             mailbox.Sender() <! (response, status)
         | RegisterReTweet(senderUser, content, subjectTweetId) ->
             let response, status, tweetID = distributeTweet senderUser content true subjectTweetId
-            // if status then
-            //     let tweet = globalData.Tweets.[tweetID]
-            //     let followers = globalData.Users.[tweet.Creator].Followers
-            //     for follower in followers do
-            //         if globalData.IsUserLoggedIn follower then
-            //             loggedInUserToClientMap.[follower] <! LiveFeed(tweet.Creator, tweet.Content)
+            if status then
+                let tweet = globalData.Tweets.[tweetID]
+                for mentioned in tweet.Mentions do
+                    if globalData.IsUserLoggedIn mentioned then
+                        clientWsDict.[mentioned].send Text (getBytes (sprintf "User '%s' mentioned you in a re-tweet [#%d]: %s" tweet.Creator tweetID tweet.Content)) true 
+                        |> Async.RunSynchronously |> ignore 
+                let followers = globalData.Users.[tweet.Creator].Followers
+                for follower in followers do
+                    if globalData.IsUserLoggedIn follower then
+                        clientWsDict.[follower].send Text (getBytes (sprintf "User '%s' re-tweeted [#%d]: %s" tweet.Creator tweetID tweet.Content)) true 
+                        |> Async.RunSynchronously |> ignore
             mailbox.Sender() <! (response, status)
         | Follow(follower, followed) ->
             let response, status = followAccount follower followed
             mailbox.Sender() <! (response, status)
-        // | FindHashtags(username, searchTerm) ->
-        //     let response, status, data = findHashtags username searchTerm
-        //     mailbox.Sender() <! (response, status, data)
-        // | FindSubscribed(username) ->
-        //     let response, status, data = findTweets username Subscribed
-        //     mailbox.Sender() <! (response, status, data)
-        // | FindMentions(username) ->
-        //     let response, status, data = findTweets username MyMentions
-        //     mailbox.Sender() <! (response, status, data)
+        | FindHashtags(searchTerm) ->
+            let response, status, data = findHashtags searchTerm
+            mailbox.Sender() <! (response, status, data)
+        | FindSubscribed(username) ->
+            let response, status, data = findTweets username Subscribed
+            mailbox.Sender() <! (response, status, data)
+        | FindMentions(username) ->
+            let response, status, data = findTweets username MyMentions
+            mailbox.Sender() <! (response, status, data)
         | ShowData ->
             printfn "%A\n%A\n%A\n%A" globalData.Users globalData.LoggedInUsers globalData.Tweets globalData.Hashtags
-        | _ -> failwith "Error"
+        // | _ -> failwith "Error"
         return! loop()
     }
     loop()
@@ -231,6 +236,7 @@ let parseArgs (req : HttpRequest) =
 
 
 let registerUser (req: HttpRequest) = 
+    printfn "Server URL Hit: %s" req.url.OriginalString
     let creds = parseArgs req
     let task = server <? SignUp(creds.Arg1, creds.Arg2)
     let (resp:string) , (status:bool) = Async.RunSynchronously(task)
@@ -240,6 +246,7 @@ let registerUser (req: HttpRequest) =
         NOT_ACCEPTABLE resp
 
 let loginUser (req: HttpRequest) = 
+    printfn "REST API Hit: %s" req.url.OriginalString
     let creds = parseArgs req
     let task = server <? SignIn(creds.Arg1, creds.Arg2)
     let (resp:string) , (status:bool) = Async.RunSynchronously(task)
@@ -249,21 +256,18 @@ let loginUser (req: HttpRequest) =
         NOT_ACCEPTABLE resp
 
 let logoutUser (req: HttpRequest) = 
+    printfn "REST API Hit: %s" req.url.OriginalString
     let creds = parseArgs req
     let task = server <? SignOut(creds.Arg1)
     let (resp:string) , (status:bool) = Async.RunSynchronously(task)
-    
-    // clientWsDict.[creds.Uid].send Close (getBytes "END") false |> ignore
-    // clientWsDict <- clientWsDict.Remove(creds.Uid)
+    clientWsDict <- clientWsDict.Remove(creds.Arg1)
     if status then
-        printfn "\n\n Sending %s" "OK"
         OK resp
     else
-        printfn "\n\n Sending %s" "MAA CHUDA LO"
         NOT_ACCEPTABLE resp
 
 let followUser (req: HttpRequest) = 
-    printfn "Server URL hit :%s" req.url.OriginalString
+    printfn "REST API Hit: %s" req.url.OriginalString
     let creds = parseArgs req
     // printfn "parsed args are: %A" creds
     let task = server <? Follow(creds.Arg1, creds.Arg2)
@@ -273,7 +277,7 @@ let followUser (req: HttpRequest) =
 
 
 let postTweet (req: HttpRequest) = 
-    printfn "Server URL hit :%s" req.url.OriginalString
+    printfn "REST API Hit: %s" req.url.OriginalString
     let creds = parseArgs req
     let task = server <? RegisterTweet(creds.Arg1, creds.Arg2)
     let (resp:string) , (status:bool) = Async.RunSynchronously(task)
@@ -281,12 +285,35 @@ let postTweet (req: HttpRequest) =
     OK resp
 
 let postReTweet (req: HttpRequest) = 
-    printfn "Server URL hit :%s" req.url.OriginalString
+    printfn "REST API Hit: %s" req.url.OriginalString
     let creds = parseArgs req
     let task = server <? RegisterReTweet(creds.Arg1, creds.Arg2, int(creds.Arg3))
     let (resp:string) , (status:bool) = Async.RunSynchronously(task)
     // printfn "Follow res: %s" resp
     OK resp
+
+let getMentions (req: HttpRequest) =
+    printfn "REST API Hit: %s" req.url.OriginalString
+    let creds = parseArgs req
+    let task = server <? FindMentions(creds.Arg1)
+    let (resp:string) , (status:bool), (data: (string * string) array) = Async.RunSynchronously(task)
+    // printfn "Follow res: %s" resp
+    // OK resp
+    JSON data
+
+let getSubscriptions (req: HttpRequest) =
+    printfn "REST API Hit: %s" req.url.OriginalString
+    let creds = parseArgs req
+    let task = server <? FindSubscribed(creds.Arg1)
+    let (resp:string) , (status:bool), (data: (string * string) array) = Async.RunSynchronously(task)
+    JSON data
+
+let getHashtagTweets (req: HttpRequest) =
+    printfn "REST API Hit: %s" req.url.OriginalString
+    let creds = parseArgs req
+    let task = server <? FindHashtags(creds.Arg1)
+    let (resp:string) , (status:bool), (data: (string * string) array) = Async.RunSynchronously(task)
+    JSON data
 
 
 let webSocketFactory (uid: string) = 
@@ -295,7 +322,6 @@ let webSocketFactory (uid: string) =
       // if `loop` is set to false, the server will stop receiving messages
       let mutable loop = true
       clientWsDict <- clientWsDict.Add(uid,webSocket)
-      printfn "web socket stored for: %s | total: %d | total logged in Users: %d" uid clientWsDict.Count globalData.LoggedInUsers.Count
       while loop do
         // the server will wait for a message to be received without blocking the thread
         let! msg = webSocket.read()
@@ -312,8 +338,7 @@ let webSocketFactory (uid: string) =
         | (Text, data, true) ->
           // the message can be converted to a string
           let str = UTF8.toString data
-          printfn "responding to %s -> %s"  uid str
-          let response = sprintf "Hi from clientSocket-%s" uid
+          let response = sprintf "Handshake from clientSocket-%s" uid
 
           // the response needs to be converted to a ByteSegment
           let byteResponse =
@@ -325,7 +350,7 @@ let webSocketFactory (uid: string) =
           do! webSocket.send Text byteResponse true
 
         | (Close, _, _) ->
-          printfn "CLOSING SOCKET SERVER"
+          printfn "Closing Socket at Server"
           let emptyResponse = [||] |> ByteSegment
           do! webSocket.send Close emptyResponse true
 
@@ -338,7 +363,6 @@ let webSocketFactory (uid: string) =
 
 let app = 
     choose [
-        // pathScan "/websocket/%s" (fun s -> (webSocketFactory s |> handShake) )
         GET >=> choose [ 
             path "/" >=> OK "index"
             path "/debug" >=> warbler (fun ctx -> OK (sprintf "Total Sockets in map %d" clientWsDict.Count))
@@ -353,11 +377,15 @@ let app =
                 path "/follow" >=> request followUser
                 path "/postTweet" >=> request postTweet
                 path "/postReTweet" >=> request postReTweet
+                path "/myMentions" >=> request getMentions
+                path "/mySubscriptions" >=> request getSubscriptions
+                path "/hashtagTweets" >=> request getHashtagTweets
+                
                  ]
         NOT_FOUND "Found no handlers." ]
 
 [<EntryPoint>]
 let main argv =
-    printfn "Hello World from F#!"
+    printfn "Twitter simulation engine started. Now listening..."
     startWebServer { defaultConfig with logger = Targets.create Verbose [||] } app
     0 // return an integer exit code

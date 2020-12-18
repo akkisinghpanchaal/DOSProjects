@@ -27,6 +27,9 @@ let socketUrl = twitterHostUrl + "/websocket"
 let followUrl = twitterHostUrl + "/follow"
 let registerTweetUrl = twitterHostUrl + "/postTweet"
 let registerReTweetUrl = twitterHostUrl + "/postReTweet"
+let myMentionsUrl = twitterHostUrl + "/myMentions"
+let mySubscriptionsUrl = twitterHostUrl + "/mySubscriptions"
+let hashtagTweetsUrl = twitterHostUrl + "/hashtagTweets"
 
 
 let system = ActorSystem.Create("TwitterClient"+string(System.Random().Next()))
@@ -36,7 +39,6 @@ let TwitterApiCall (url: string) (method: string) (body: string) =
     | "GET" ->
         Http.RequestString(url, httpMethod = method)
     | "POST" ->
-        // printfn "url: %s | method: %s | body: %s" url method body
         Http.RequestString(url, httpMethod = "POST", body = TextRequest body)
     | _ -> "invalid rest method"
 
@@ -51,8 +53,9 @@ let connect (port: int) (uid: string) (ws: ClientWebSocket) =
 
 let close (ws: ClientWebSocket) =
     let tk = Async.DefaultCancellationToken
-    Async.AwaitTask(ws.CloseAsync(WebSocketCloseStatus.NormalClosure, "Close", tk))
-    // Async.AwaitTask(ws.SendAsync(ArraySegment(Encoding.UTF8.GetBytes ""), WebSocketMessageType.Close, true, tk))
+    let tsk = ws.CloseAsync(WebSocketCloseStatus.NormalClosure, "Close", tk)
+    while tsk.IsCompleted do
+        ()
 
 let send (str: string) (ws: ClientWebSocket) =
     let req = Encoding.UTF8.GetBytes str
@@ -81,7 +84,7 @@ let SocketListener (mailbox: Actor<_>) =
         // printfn "    Kuch to aya"
         match msg with
         | Listen(ws) ->
-            // printfn "Client: Socket Started Listening"
+            // Socket Started Listening"
             read ws
         return! loop()
     }
@@ -91,9 +94,7 @@ let connectAndPing (ws: ClientWebSocket)(port: int) (uid:string)= async {
     do! connect port uid ws
     System.Threading.Thread.Sleep(100)    
     do! send ("Hello from "+uid) ws
-    // close ws |> ignore
-    let listener = spawn system ("listener"+uid) SocketListener
-    printfn "listener%s: %A" uid listener
+    let listener = spawn system "listener" SocketListener
     listener <! Listen(ws)
 }
 
@@ -106,60 +107,40 @@ let Client (mailbox: Actor<_>) =
         | Register(username, password) ->
             id <- username
             pwd <- password
-            // printfn "id: '%s' | pwd: '%s' | username: '%s' | password: '%s'" id pwd username password
-            // serverActor <! SignUp(id, pwd)
             let resp = TwitterApiCall signUpUrl "POST" (sprintf """{"Arg1":"%s", "Arg2":"%s", "Arg3":"%s"}""" id pwd "")
-            printfn "Response from server: %s" resp
+            mailbox.Sender() <! resp
         | Login -> 
             let resp = TwitterApiCall loginUrl "POST" (sprintf """{"Arg1":"%s", "Arg2":"%s", "Arg3":"%s"}""" id pwd "")
-            printfn "Response from server: %s" resp
-            // printfn "login me id: '%s'" id
-            // select ("/user/"+id) system <! InitSocket
+            mailbox.Sender() <! resp
+            select ("/user/"+id) system <! InitSocket
         | InitSocket -> 
-            // printfn "lo bhai id or password lelo: '%s' | '%s'" id pwd
             let resp = TwitterApiCall (socketUrl + "/" + id) "GET" ""
             connectAndPing ws 8080 id |> Async.RunSynchronously
-            printfn "Response from server: %s" resp
+            mailbox.Sender() <! resp
         | Logout -> 
             let resp = TwitterApiCall logoutUrl "POST" (sprintf """{"Arg1":"%s", "Arg2":"%s", "Arg3":"%s"}""" id "" "")
-            printfn "Response from server: %s" resp
-            
-            // ToDo: Make this run
-            // close ws |> Async.RunSynchronously
-
-            // send "CLOSE" ws |> Async.RunSynchronously
-            // send ws |> Async.RunSynchronously
-        // | GetMentions ->
-        //     serverActor <! FindMentions(id)
-        // | GetSubsc`ribed ->
-        //     serverActor <! FindSubscribed(id)
-        // | GetHashtags(searchTerm) ->
-        //     serverActor <! FindHashtags(id, searchTerm)
+            printfn "Websocket: Disconnected!"
+            mailbox.Sender() <! resp
+        | GetMentions ->
+            let resp = TwitterApiCall myMentionsUrl "POST" (sprintf """{"Arg1":"%s", "Arg2":"%s", "Arg3":"%s"}""" id "" "")
+            mailbox.Sender() <! resp
+        | GetSubscribed ->
+            let resp = TwitterApiCall mySubscriptionsUrl "POST" (sprintf """{"Arg1":"%s", "Arg2":"%s", "Arg3":"%s"}""" id "" "")
+            mailbox.Sender() <! resp
+        | GetHashtags(searchTerm) ->
+            let resp = TwitterApiCall hashtagTweetsUrl "POST" (sprintf """{"Arg1":"%s", "Arg2":"%s", "Arg3":"%s"}""" searchTerm "" "")
+            mailbox.Sender() <! resp
         | SendTweet(content) ->
-            // serverActor<! RegisterTweet(id, content) 
             let resp = TwitterApiCall registerTweetUrl "POST" (sprintf """{"Arg1":"%s", "Arg2":"%s", "Arg3":"%s"}""" id content "")
-            printfn "Response from server: %s" resp
+            mailbox.Sender() <! resp
         | SendReTweet(content,retweetId) ->
-            // serverActor<! RegisterReTweet(id, content, retweetId) 
             let resp = TwitterApiCall registerReTweetUrl "POST" (sprintf """{"Arg1":"%s", "Arg2":"%s", "Arg3":"%s"}""" id content (string(retweetId)))
-            printfn "Response from server: %s" resp
+            mailbox.Sender() <! resp
         | FollowUser(followed) ->
-            // serverActor <! Follow(id,followed)
             let resp = TwitterApiCall followUrl "POST" (sprintf """{"Arg1":"%s", "Arg2":"%s", "Arg3":"%s"}""" id followed "")
-            printfn "Response from server: %s" resp
-        // | LiveFeed(tweetCreator, tweetContent) ->
-        //     printfn "Live Update for @%s => @%s tweeted %s\n" id tweetCreator tweetContent
-        // | ApiResponse(response, status) ->
-        //     if not status then
-        //         printfn "Server: %s" response
-        //     select "/user/simulator" system  <! UnitTaskCompleted
-        // | ApiDataResponse(response, status, data) ->
-        //     printfn "=============+%s Query Response+=================" id
-        //     for user, tweet in data do
-        //         printfn "@%s : \" %s \"" user tweet
-        //     printfn "============================================="
+            mailbox.Sender() <! resp
         // | _ ->
-        //     printf "Maaaaoooo!!"
+        //     printfn "invalid match"
         return! loop()
     }
     loop()
