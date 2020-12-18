@@ -144,25 +144,40 @@ let Simulator (mailbox: Actor<_>) =
                 currFollowing <- Set.empty
             totalTasks <- Array.sum followingSizes + totalTasks
 
+            printfn "34q5q444knrqlnqlnr;qknr================"
+            
+            // let mutable randUser = getRandomUser 0 totalUsers
+            // let mutable randTweet = "@" + string(makeUserId(randUser)) + " " + randTweets.[random.Next(randTweets.Length)]
+            // userActors.[0] <! SendTweet(randTweet)
+
             for userNum in 0..(totalUsers-1) do
+                printfn "pehla"
                 userStr <- (makeUserId(userNum))
-                for _ in 1..tweetsDist.[userNum] do
-                    let mutable randUser = getRandomUser userNum totalUsers
-                    let mutable randTweet = "@" + string(makeUserId(randUser)) + " " + randTweets.[random.Next(randTweets.Length)]
-                    userActors.[userNum] <! SendTweet(randTweet)
-                    if userNum%5 = random.Next(5) then
-                        userActors.[userNum] <! SendReTweet("@"+string(makeUserId(randUser))+ " "+randTweets.[ random.Next() % randTweets.Length ], random.Next()%tweetCount)
-                        retweetCount <- retweetCount + 1
-                if (userNum % 10) = (random.Next(10)) then
-                    loggedOut <- 1+ loggedOut
-                    userActors.[userNum] <! Logout
-                    printfn "User %s has logged out successfully." userStr
+                // for _ in 1..tweetsDist.[userNum] do
+                printfn "dusra"
+                System.Threading.Thread.Sleep(300)    
+                let mutable randUser = getRandomUser userNum totalUsers
+                let mutable randTweet = "@" + string(makeUserId(randUser)) + " " + randTweets.[random.Next(randTweets.Length)]
+                userActors.[userNum] <! SendTweet(randTweet)
+                    // let syncTweet = userActors.[userNum] <? SendTweet(randTweet)
+                    // let sresp = Async.RunSynchronously(syncTweet)
+                    // printfn "%A" sresp
+                    // if userNum%5 = random.Next(5) then
+                    //     userActors.[userNum] <! SendReTweet("@"+string(makeUserId(randUser))+ " "+randTweets.[ random.Next() % randTweets.Length ], random.Next()%tweetCount)
+                    //     retweetCount <- retweetCount + 1
+                // if (userNum % 10) = (random.Next(10)) then
+                //     loggedOut <- 1+ loggedOut
+                //     userActors.[userNum] <! Logout
+                    // printfn "User %s has logged out successfully." userStr
+                // tweetCountUsers.[userNum] <- tweetsDist.[userNum]
                 tweetCountUsers.[userNum] <- tweetsDist.[userNum]
                 tweetCount <- tweetsDist.[userNum] + tweetCount
             randomRetweetCount <- retweetCount
             randomLogoutCount <- loggedOut
             tasksCount <- totalTasks + tweetCount + retweetCount + loggedOut
             printfn "Total Tasks:%d %d\nRetweet Count %d" totalTasks tasksDone retweetCount
+            let temp = sprintf "Total Tasks:%d %d\nRetweet Count %d" totalTasks tasksDone retweetCount
+            mailbox.Sender() <! temp
         | UnitTaskCompleted -> 
             topProfilesCount <- min 9 (totalUsers-1)
             let summaryTitle = "\n\n====================================\n\tSIMULATION SUMMARY\n====================================\n\n"
@@ -200,9 +215,9 @@ let main(args: array<string>) =
     // let task = simulatorActor <? Init(10,10,10)
     let response = Async.RunSynchronously(task)
     printfn "%s" (string(response))
-    let anotherTask = simulatorActor <? UnitTaskCompleted
-    let anotherResponse = Async.RunSynchronously(anotherTask)
-    ()
+    // let anotherTask = simulatorActor <? UnitTaskCompleted
+    // let anotherResponse = Async.RunSynchronously(anotherTask)
+    // ()
     // If required, then perform query simulation as well
     // if isRunQuerySimulation then
     //     let task2 = simulatorActor <? RunQuerySimulation

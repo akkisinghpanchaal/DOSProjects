@@ -160,24 +160,24 @@ let Server (mailbox: Actor<_>) =
             mailbox.Sender() <! (response, status)
         | RegisterTweet(senderUser, content) ->
             let response, status, tweetID = distributeTweet senderUser content false -1
-            if status then
-                let tweet = globalData.Tweets.[tweetID]
-                for mentioned in tweet.Mentions do
-                    if globalData.IsUserLoggedIn mentioned then
-                        loggedInUserToClientMap.[mentioned] <! LiveFeed(tweet.Creator, tweet.Content)
-                let followers = globalData.Users.[tweet.Creator].Followers
-                for follower in followers do
-                    if globalData.IsUserLoggedIn follower then
-                        loggedInUserToClientMap.[follower] <! LiveFeed(tweet.Creator, tweet.Content)
+            // if status then
+            //     let tweet = globalData.Tweets.[tweetID]
+            //     for mentioned in tweet.Mentions do
+            //         if globalData.IsUserLoggedIn mentioned then
+            //             loggedInUserToClientMap.[mentioned] <! LiveFeed(tweet.Creator, tweet.Content)
+            //     let followers = globalData.Users.[tweet.Creator].Followers
+            //     for follower in followers do
+            //         if globalData.IsUserLoggedIn follower then
+            //             loggedInUserToClientMap.[follower] <! LiveFeed(tweet.Creator, tweet.Content)
             mailbox.Sender() <! (response, status)
         | RegisterReTweet(senderUser, content, subjectTweetId) ->
             let response, status, tweetID = distributeTweet senderUser content true subjectTweetId
-            if status then
-                let tweet = globalData.Tweets.[tweetID]
-                let followers = globalData.Users.[tweet.Creator].Followers
-                for follower in followers do
-                    if globalData.IsUserLoggedIn follower then
-                        loggedInUserToClientMap.[follower] <! LiveFeed(tweet.Creator, tweet.Content)
+            // if status then
+            //     let tweet = globalData.Tweets.[tweetID]
+            //     let followers = globalData.Users.[tweet.Creator].Followers
+            //     for follower in followers do
+            //         if globalData.IsUserLoggedIn follower then
+            //             loggedInUserToClientMap.[follower] <! LiveFeed(tweet.Creator, tweet.Content)
             mailbox.Sender() <! (response, status)
         | Follow(follower, followed) ->
             let response, status = followAccount follower followed
@@ -347,7 +347,7 @@ let app =
                 path "/logout" >=> request logoutUser
                 path "/follow" >=> request followUser
                 path "/postTweet" >=> request postTweet
-                path "/postReTweet" >=> request postTweet
+                path "/postReTweet" >=> request postReTweet
                  ]
         NOT_FOUND "Found no handlers." ]
 
