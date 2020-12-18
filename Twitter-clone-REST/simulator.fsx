@@ -110,7 +110,7 @@ let Simulator (mailbox: Actor<_>) =
 
             // creating a zipf distribution of subscribers.
             // The max count of subscribers is passed from the command line
-            System.Threading.Thread.Sleep(2000)    
+            // System.Threading.Thread.Sleep(2000)    
 
             let mutable followingSize = 0
             let mutable userStr = ""
@@ -119,31 +119,30 @@ let Simulator (mailbox: Actor<_>) =
             let mutable loggedOut = 0
             let mutable currFollowing: Set<int> = Set.empty
             
-            userActors.[3] <! Login
-            printfn "login hua"
-            System.Threading.Thread.Sleep(2000)
-            printfn "follow bheja"
-            userActors.[3] <! FollowUser(makeUserId(4))
+            // userActors.[3] <! Login
+            // printfn "login hua"
+            // System.Threading.Thread.Sleep(2000)
+            // printfn "follow bheja"
+            // userActors.[3] <! FollowUser(makeUserId(4))
 
-            // for userNum in 0..(totalUsers-1) do
-            //     userStr <-(makeUserId(userNum))
-            //     printfn "%s" userStr
-            //     followingSize <- followingSizes.[userNum]
-            //     userActors.[userNum] <! Login
+            for userNum in 0..(totalUsers-1) do
+                // userStr <-(makeUserId(userNum))
+                printfn "USER : %d" userNum
+                followingSize <- followingSizes.[userNum]
+                userActors.[userNum] <! Login
                 
-            //     System.Threading.Thread.Sleep(1000)    
+                // System.Threading.Thread.Sleep(1000)    
                 
-            //     for _ in 1..followingSize do
-            //         let mutable randUser = getRandomUser userNum totalUsers
-            //         // check if the user is already followed
-            //         while currFollowing.Contains randUser do
-            //             randUser <- getRandomUser userNum totalUsers
-            //         currFollowing <- currFollowing.Add(randUser)
-            //         printfn "%s following %s" (makeUserId(userNum)) (makeUserId(randUser))
-            //         let mutable task = userActors.[userNum] <? FollowUser(makeUserId(randUser))
-            //         Async.RunSynchronously(task) |> ignore
-            //     currFollowing <- Set.empty
-            // totalTasks <- Array.sum followingSizes + totalTasks
+                for _ in 1..followingSize do
+                    let mutable randUser = getRandomUser userNum totalUsers
+                    // check if the user is already followed
+                    while currFollowing.Contains randUser do
+                        randUser <- getRandomUser userNum totalUsers
+                    currFollowing <- currFollowing.Add(randUser)
+                    printfn "%s following %s" (makeUserId(userNum)) (makeUserId(randUser))
+                    userActors.[userNum] <! FollowUser(makeUserId(randUser))
+                currFollowing <- Set.empty
+            totalTasks <- Array.sum followingSizes + totalTasks
 
         //     for userNum in 0..(totalUsers-1) do
         //         userStr <- (makeUserId(userNum))
@@ -209,12 +208,12 @@ let Simulator (mailbox: Actor<_>) =
     loop()
 
 let main(args: array<string>) =
-    // let totalUsers, maxSubscribers, maxTweets, runQuerySimulation = int(args.[3]), int(args.[4]), int(args.[5]), args.[6]
-    // let isRunQuerySimulation = ((runQuerySimulation.ToLower() = "yes") ||  (runQuerySimulation.ToLower() = "y"))
+    let totalUsers, maxSubscribers, maxTweets, runQuerySimulation = int(args.[3]), int(args.[4]), int(args.[5]), args.[6]
+    let isRunQuerySimulation = ((runQuerySimulation.ToLower() = "yes") ||  (runQuerySimulation.ToLower() = "y"))
     let simulatorActor = spawn system "simulator" Simulator
-    // simulatorActor <! Init(totalUsers,maxSubscribers,maxTweets)
-    // let task = simulatorActor <? Init(totalUsers,maxSubscribers,maxTweets)
-    let task = simulatorActor <? Init(10,10,10)
+    simulatorActor <! Init(totalUsers,maxSubscribers,maxTweets)
+    let task = simulatorActor <? Init(totalUsers,maxSubscribers,maxTweets)
+    // let task = simulatorActor <? Init(10,10,10)
     let response = Async.RunSynchronously(task)
     printfn "%s" (string(response))
 

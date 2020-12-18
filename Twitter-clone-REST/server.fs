@@ -84,13 +84,13 @@ let signOutUser (username:string) =
     response, status
 
 let followAccount (followerUsername: string) (followedUsername: string) =
-    printfn "followerUserName: %s | followedUserName: %s" followerUsername followedUsername
+    // printfn "followerUserName: %s | followedUserName: %s" followerUsername followedUsername
     let mutable response, status = "", false
-    printfn "Follow stage 1"
+    // printfn "Follow stage 1"
     globalData.Users.[followedUsername].AddToFollowers(followerUsername)
-    printfn "Follow stage 2"
+    // printfn "Follow stage 2"
     globalData.Users.[followerUsername].AddToFollowings(followedUsername)
-    printfn "Follow stage 3"
+    // printfn "Follow stage 3"
     response <- "User " + followerUsername + " started following user " + followedUsername
     status <- true
     response, status
@@ -180,9 +180,7 @@ let Server (mailbox: Actor<_>) =
                         loggedInUserToClientMap.[follower] <! LiveFeed(tweet.Creator, tweet.Content)
             mailbox.Sender() <! (response, status)
         | Follow(follower, followed) ->
-            printfn "server ka follow. follower: %s | followed: %s" follower followed
             let response, status = followAccount follower followed
-            printfn "in server actor follow response: %s | status: %b" response status
             mailbox.Sender() <! (response, status)
         | FindHashtags(username, searchTerm) ->
             let response, status, data = findHashtags username searchTerm
@@ -233,7 +231,7 @@ let parseArgs (req : HttpRequest) =
 let registerUser (req: HttpRequest) = 
     let creds = parseArgs req
     let task = server <? SignUp(creds.Arg1, creds.Arg2)
-    let resp, status = Async.RunSynchronously(task)
+    let (resp:string) , (status:bool) = Async.RunSynchronously(task)
     if status then
         OK resp
     else
@@ -242,7 +240,7 @@ let registerUser (req: HttpRequest) =
 let loginUser (req: HttpRequest) = 
     let creds = parseArgs req
     let task = server <? SignIn(creds.Arg1, creds.Arg2)
-    let resp, status = Async.RunSynchronously(task)
+    let (resp:string) , (status:bool) = Async.RunSynchronously(task)
     if status then
         OK resp
     else
@@ -251,7 +249,7 @@ let loginUser (req: HttpRequest) =
 let logoutUser (req: HttpRequest) = 
     let creds = parseArgs req
     let task = server <? SignOut(creds.Arg1)
-    let resp, status = Async.RunSynchronously(task)
+    let (resp:string) , (status:bool) = Async.RunSynchronously(task)
     
     // clientWsDict.[creds.Uid].send Close (getBytes "END") false |> ignore
     // clientWsDict <- clientWsDict.Remove(creds.Uid)
@@ -264,9 +262,10 @@ let logoutUser (req: HttpRequest) =
 
 let followUser (req: HttpRequest) = 
     let creds = parseArgs req
-    printfn "parsed args are: %A" creds
+    // printfn "parsed args are: %A" creds
     let task = server <? Follow(creds.Arg1, creds.Arg2)
-    let resp, status = Async.RunSynchronously(task)
+    let (resp:string) , (status:bool) = Async.RunSynchronously(task)
+    // printfn "Follow res: %s" resp
     OK resp
 
 

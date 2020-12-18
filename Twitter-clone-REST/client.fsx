@@ -33,7 +33,7 @@ let TwitterApiCall (url: string) (method: string) (body: string) =
     | "GET" ->
         Http.RequestString(url, httpMethod = method)
     | "POST" ->
-        printfn "url: %s | method: %s | body: %s" url method body
+        // printfn "url: %s | method: %s | body: %s" url method body
         Http.RequestString(url, httpMethod = "POST", body = TextRequest body)
     | _ -> "invalid rest method"
 
@@ -103,17 +103,17 @@ let Client (mailbox: Actor<_>) =
         | Register(username, password) ->
             id <- username
             pwd <- password
-            printfn "id: '%s' | pwd: '%s' | username: '%s' | password: '%s'" id pwd username password
+            // printfn "id: '%s' | pwd: '%s' | username: '%s' | password: '%s'" id pwd username password
             // serverActor <! SignUp(id, pwd)
             let resp = TwitterApiCall signUpUrl "POST" (sprintf """{"Arg1":"%s", "Arg2":"%s", "Arg3":"%s"}""" id pwd "")
             printfn "Response from server: %s" resp
         | Login -> 
             let resp = TwitterApiCall loginUrl "POST" (sprintf """{"Arg1":"%s", "Arg2":"%s", "Arg3":"%s"}""" id pwd "")
             printfn "Response from server: %s" resp
-            printfn "login me id: '%s'" id
+            // printfn "login me id: '%s'" id
             // select ("/user/"+id) system <! InitSocket
         | InitSocket -> 
-            printfn "lo bhai id or password lelo: '%s' | '%s'" id pwd
+            // printfn "lo bhai id or password lelo: '%s' | '%s'" id pwd
             let resp = TwitterApiCall (socketUrl + "/" + id) "GET" ""
             connectAndPing ws 8080 id |> Async.RunSynchronously
             printfn "Response from server: %s" resp
@@ -128,7 +128,7 @@ let Client (mailbox: Actor<_>) =
             // send ws |> Async.RunSynchronously
         // | GetMentions ->
         //     serverActor <! FindMentions(id)
-        // | GetSubscribed ->
+        // | GetSubsc`ribed ->
         //     serverActor <! FindSubscribed(id)
         // | GetHashtags(searchTerm) ->
         //     serverActor <! FindHashtags(id, searchTerm)
@@ -138,9 +138,7 @@ let Client (mailbox: Actor<_>) =
         //     serverActor<! RegisterReTweet(id, content, retweetId) 
         | FollowUser(followed) ->
             // serverActor <! Follow(id,followed)
-            printfn "client me follow bhejra: id: %s | followed: %s" id followed
             let resp = TwitterApiCall followUrl "POST" (sprintf """{"Arg1":"%s", "Arg2":"%s", "Arg3":"%s"}""" id followed "")
-            printfn "client me follow ka response aya"
             printfn "Response from server: %s" resp
         // | LiveFeed(tweetCreator, tweetContent) ->
         //     printfn "Live Update for @%s => @%s tweeted %s\n" id tweetCreator tweetContent
