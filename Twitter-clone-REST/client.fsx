@@ -25,8 +25,11 @@ let logoutUrl = twitterHostUrl + "/logout"
 let signUpUrl = twitterHostUrl + "/register"
 let socketUrl = twitterHostUrl + "/websocket"
 let followUrl = twitterHostUrl + "/follow"
+let registerTweetUrl = twitterHostUrl + "/postTweet"
+let registerReTweetUrl = twitterHostUrl + "/postReTweet"
 
-let system = ActorSystem.Create("TwitterClient")
+
+let system = ActorSystem.Create("TwitterClient"+string(System.Random().Next()))
 
 let TwitterApiCall (url: string) (method: string) (body: string) = 
     match method with
@@ -132,10 +135,14 @@ let Client (mailbox: Actor<_>) =
         //     serverActor <! FindSubscribed(id)
         // | GetHashtags(searchTerm) ->
         //     serverActor <! FindHashtags(id, searchTerm)
-        // | SendTweet(content) ->
-        //     serverActor<! RegisterTweet(id, content) 
-        // | SendReTweet(content,retweetId) ->
-        //     serverActor<! RegisterReTweet(id, content, retweetId) 
+        | SendTweet(content) ->
+            // serverActor<! RegisterTweet(id, content) 
+            let resp = TwitterApiCall registerTweetUrl "POST" (sprintf """{"Arg1":"%s", "Arg2":"%s", "Arg3":"%s"}""" id content "")
+            printfn "Response from server: %s" resp
+        | SendReTweet(content,retweetId) ->
+            // serverActor<! RegisterReTweet(id, content, retweetId) 
+            let resp = TwitterApiCall registerReTweetUrl "POST" (sprintf """{"Arg1":"%s", "Arg2":"%s", "Arg3":"%s"}""" id content (string(retweetId)))
+            printfn "Response from server: %s" resp
         | FollowUser(followed) ->
             // serverActor <! Follow(id,followed)
             let resp = TwitterApiCall followUrl "POST" (sprintf """{"Arg1":"%s", "Arg2":"%s", "Arg3":"%s"}""" id followed "")

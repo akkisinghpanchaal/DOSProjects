@@ -144,54 +144,39 @@ let Simulator (mailbox: Actor<_>) =
                 currFollowing <- Set.empty
             totalTasks <- Array.sum followingSizes + totalTasks
 
-        //     for userNum in 0..(totalUsers-1) do
-        //         userStr <- (makeUserId(userNum))
-        //         for _ in 1..tweetsDist.[userNum] do
-        //             let mutable randUser = getRandomUser userNum totalUsers
-        //             let mutable randTweet = "@" + string(makeUserId(randUser)) + " " + randTweets.[random.Next(randTweets.Length)]
-        //             userActors.[userNum] <! SendTweet(randTweet)
-        //             if (userNum%2 <> 0) <> (tweetsDist.[userNum]%2 <> 0) then
-        //                 userActors.[userNum] <! SendReTweet("@"+string(makeUserId(randUser))+ " "+randTweets.[ random.Next() % randTweets.Length ], random.Next()%tweetCount)
-        //                 retweetCount <- retweetCount + 1
-        //         if (userNum % 10) = (random.Next(10)) then
-        //             loggedOut <- 1+ loggedOut
-        //             userActors.[userNum] <! Logout
-        //             // printfn "User %s has logged out successfully." userStr
-        //         tweetCountUsers.[userNum] <- tweetsDist.[userNum]
-        //         tweetCount <- tweetsDist.[userNum] + tweetCount
-        //     randomRetweetCount <- retweetCount
-        //     randomLogoutCount <- loggedOut
-        //     tasksCount <- totalTasks + tweetCount + retweetCount + loggedOut
-        //     printfn "Total Tasks:%d %d\nRetweet Count %d" totalTasks tasksDone retweetCount
-        // | UnitTaskCompleted -> 
-        //     tasksDone <- 1 + tasksDone
-        //     printfn "Tasks done %d out of %d" tasksDone tasksCount
-        //     let mark25pct = int(float(tasksCount)*0.25)
-        //     let mark50pct = int(float(tasksCount)*0.50)
-        //     let mark75pct = int(float(tasksCount)*0.75)
-        //     if tasksDone = mark25pct then
-        //         printfn "25% of requests completed."
-        //     if tasksDone = mark50pct then
-        //         printfn "50% of requests completed."
-        //     if tasksDone = mark75pct then
-        //         printfn "75% of requests completed."
+            for userNum in 0..(totalUsers-1) do
+                userStr <- (makeUserId(userNum))
+                for _ in 1..tweetsDist.[userNum] do
+                    let mutable randUser = getRandomUser userNum totalUsers
+                    let mutable randTweet = "@" + string(makeUserId(randUser)) + " " + randTweets.[random.Next(randTweets.Length)]
+                    userActors.[userNum] <! SendTweet(randTweet)
+                    if userNum%5 = random.Next(5) then
+                        userActors.[userNum] <! SendReTweet("@"+string(makeUserId(randUser))+ " "+randTweets.[ random.Next() % randTweets.Length ], random.Next()%tweetCount)
+                        retweetCount <- retweetCount + 1
+                if (userNum % 10) = (random.Next(10)) then
+                    loggedOut <- 1+ loggedOut
+                    userActors.[userNum] <! Logout
+                    printfn "User %s has logged out successfully." userStr
+                tweetCountUsers.[userNum] <- tweetsDist.[userNum]
+                tweetCount <- tweetsDist.[userNum] + tweetCount
+            randomRetweetCount <- retweetCount
+            randomLogoutCount <- loggedOut
+            tasksCount <- totalTasks + tweetCount + retweetCount + loggedOut
+            printfn "Total Tasks:%d %d\nRetweet Count %d" totalTasks tasksDone retweetCount
+        | UnitTaskCompleted -> 
+            topProfilesCount <- min 9 (totalUsers-1)
+            let summaryTitle = "\n\n====================================\n\tSIMULATION SUMMARY\n====================================\n\n"
+            let mutable summaryBody = 
+                sprintf "Total Users: %d\nMax subscribers for any user: %d\nTotal API Requests processed: %d\nTotal random retweets: %d\nRandom logouts simulated: %d\nTotal simulation time: %.2f milliseconds" totalUsers maxSubscribers tasksCount randomRetweetCount randomLogoutCount stopWatch.Elapsed.TotalMilliseconds
+            summaryBody <- summaryBody + "\n\nBelow are the top " + string(topProfilesCount) + " most popular accounts based on our simulation results.\n\n"
 
-        //     if tasksDone = tasksCount then
-        //         stopWatch.Stop()
-        //         printfn "All requests completed."
-        //         topProfilesCount <- min 9 (totalUsers-1)
-        //         let summaryTitle = "\n\n====================================\n\tSIMULATION SUMMARY\n====================================\n\n"
-        //         let mutable summaryBody = 
-        //             sprintf "Total Users: %d\nMax subscribers for any user: %d\nTotal API Requests processed: %d\nTotal random retweets: %d\nRandom logouts simulated: %d\nTotal simulation time: %.2f milliseconds" totalUsers maxSubscribers tasksCount randomRetweetCount randomLogoutCount stopWatch.Elapsed.TotalMilliseconds
-        //         summaryBody <- summaryBody + "\n\nBelow are the top " + string(topProfilesCount) + " most popular accounts based on our simulation results.\n\n"
-
-        //         for i in 0..topProfilesCount do
-        //             let mutable thisAccountSummary = 
-        //                 sprintf "%d. %s | Followers: %d | Tweets: %d\n" (i+1) (makeUserId(i)) (followingSizesZipf.[i]) (tweetCountUsers.[i])
-        //             summaryBody <- summaryBody + thisAccountSummary
-                
-        //         caller <! (summaryTitle + summaryBody)
-        //         return! loop()
+            for i in 0..topProfilesCount do
+                let mutable thisAccountSummary = 
+                    sprintf "%d. %s | Followers: %d | Tweets: %d\n" (i+1) (makeUserId(i)) (followingSizesZipf.[i]) (tweetCountUsers.[i])
+                summaryBody <- summaryBody + thisAccountSummary
+            
+            caller <! (summaryTitle + summaryBody)
+            return! loop()
         // | RunQuerySimulation ->
         //     printfn "Starting query simulation..."
         //     for i in 0..topProfilesCount do
@@ -211,12 +196,13 @@ let main(args: array<string>) =
     let totalUsers, maxSubscribers, maxTweets, runQuerySimulation = int(args.[3]), int(args.[4]), int(args.[5]), args.[6]
     let isRunQuerySimulation = ((runQuerySimulation.ToLower() = "yes") ||  (runQuerySimulation.ToLower() = "y"))
     let simulatorActor = spawn system "simulator" Simulator
-    simulatorActor <! Init(totalUsers,maxSubscribers,maxTweets)
     let task = simulatorActor <? Init(totalUsers,maxSubscribers,maxTweets)
     // let task = simulatorActor <? Init(10,10,10)
     let response = Async.RunSynchronously(task)
     printfn "%s" (string(response))
-
+    let anotherTask = simulatorActor <? UnitTaskCompleted
+    let anotherResponse = Async.RunSynchronously(anotherTask)
+    ()
     // If required, then perform query simulation as well
     // if isRunQuerySimulation then
     //     let task2 = simulatorActor <? RunQuerySimulation

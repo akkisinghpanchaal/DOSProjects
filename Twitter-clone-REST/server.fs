@@ -269,6 +269,21 @@ let followUser (req: HttpRequest) =
     OK resp
 
 
+let postTweet (req: HttpRequest) = 
+    let creds = parseArgs req
+    let task = server <? RegisterTweet(creds.Arg1, creds.Arg2)
+    let (resp:string) , (status:bool) = Async.RunSynchronously(task)
+    // printfn "Follow res: %s" resp
+    OK resp
+
+let postReTweet (req: HttpRequest) = 
+    let creds = parseArgs req
+    let task = server <? RegisterReTweet(creds.Arg1, creds.Arg2, int(creds.Arg3))
+    let (resp:string) , (status:bool) = Async.RunSynchronously(task)
+    // printfn "Follow res: %s" resp
+    OK resp
+
+
 let webSocketFactory (uid: string) = 
   let ws (webSocket : WebSocket) (context: HttpContext) =
     socket {
@@ -316,7 +331,6 @@ let webSocketFactory (uid: string) =
       }
   ws
 
-
 let app = 
     choose [
         // pathScan "/websocket/%s" (fun s -> (webSocketFactory s |> handShake) )
@@ -332,6 +346,8 @@ let app =
                 path "/login" >=> request loginUser
                 path "/logout" >=> request logoutUser
                 path "/follow" >=> request followUser
+                path "/postTweet" >=> request postTweet
+                path "/postReTweet" >=> request postTweet
                  ]
         NOT_FOUND "Found no handlers." ]
 
