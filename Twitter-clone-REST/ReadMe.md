@@ -1,27 +1,40 @@
-# Twitter Clone and a client tester/simulator using F# and Akka.net Actors
+# Twitter Clone Server/Client CLI with REST APIs and Websockets, using F#, Akka.net, and Suave Framework.
 ## Team Members: Akshay Kumar [UFID: 4679-9946] | Rajat Rai [UFID: 1417-2127]
 
 #### Aim 
-The goal of this first part of a two-part project is to implement the user/engine interaction and tests it using a simulator built over it. It's to be a Twitter clone with functionalities that mimic the real social networking service. It implements this using the concurrent programming model of F# [1], Akka Actors[2].
+The goal of this project is to implement REST APIs and Websockets on top of the prior implemented Twitter engine in part 1 of the project. We are here using REST(GET/POST) for HTTP  calls and Websockets for live notifications to the client from the server. It is a Twitter clone with functionalities that mimic the real social networking service. It implements this using the concurrent programming model of F# [1], Akka Actors[2], and Sauave[3] server.
 
 #### Architecture
-![Architecture Diagram](./images/architecture.jpeg)
-The project has four key parts:
-* The Simulator:
-    * This module is an Akka actor that takes 3 command line inputs:
-        * n: Number of users
-        * maxSubs: Maximum number of subscribers for a user
-        * maxTwts: Maximum number of Tweets for a user
-* The Client:
+The project has three key parts:
+* The Client Simulator:
     * This module is an Akka actor that mimics the functionality of the logged-in application provided to the user by the service. For example, Twitter for Web/Android.
 * The Sever:
     * This is the component that forms the communication bridge between various signed-up users. All the tweets, follow notifications, etc. crossover from one user to another via the server as the mediator.
 * The Database:
     * This component stores all the data related to hashtags, tweets, and users and also procedures to perform while modifying/adding them(reduces most of the load off the server).
 
+#### How to run the program?
+
+To run the code, navigate to the project root directory using the below command. The root directory is the one where the &nbsp;`server.fs`&nbsp; file resides.
+
+```bash
+cd /path/to/Twitter-clone-REST/
+```
+Now, you can run the program using the below command:
+
+##### Server
+```bash
+dotnet watch run
+```
+
+##### Client
+```bash
+dotnet fsi --langversion:preview client_simulator.fsx
+```
+
 #### Functionalities
 We Provide the following functionalities:
-* Signup for a new user
+* Sign up for a new user
 * Login/Logout for an existing user
 * Follow for existing users from A to B
 * Tweet/Retweet by an existing user by using @[username]
@@ -37,43 +50,11 @@ We Provide the following functionalities:
 * Population of a user's timeline and mentions by leveraging the above functionality.
 
 #### Implementation
-We start by creating a new server actor instance and then set up a simulation network using the three inputs described above. It calculates the number of followers and the number of tweets per user based on the input's Zipf distribution. All users are first registered using a username and password and then assigned their respective followers (one-by-one, closer to the real thing). After this, the users are logged in and  
-#### How to run the program?
-The program takes a total of three inputs in the order as mentioned.
-        * n: Number of users
-        * maxSubs: Maximum number of subscribers for a user
-        * maxTwts: Maximum number of Tweets for a user
+We start by creating a new server actor instance and multiple client instances on different terminals. The client implementation offers a command-line interface to input user's inputs for all actions it can perform. Any user/client needs to be registered using a username and password and then assigned their respective followers (one-by-one, closer to the real thing). After this, a client can make Tweets/Retweets and even Queries  
 
-To run the code, navigate to the project root directory using the below command. The root directory is the one where the &nbsp;`simulator.fsx`&nbsp; file resides.
-
-```bash
-cd /path/to/Twitter-clone/
-```
-Now, you can run the program using the below command:
-
-```bash
-dotnet fsi --langversion:preview simulator.fsx [n] [maxSubs] [maxTwts]
-```
-#### Observations
-![Observation Table](./images/time_graph_table.png)
-![Observation Graph](./images/time_graph.png)
-
-The above table and graph show how much time it took for each user to receive a copy of a tweet on its logged-in client. Note that each user other than the one tweeting was subscribed to receive a tweet. We would also like to mention that, after the 5000 users mark, the CPU of the machine throttled because of heat, and hence the results after that are not on the same processor clock speed. We tested this on an Intel i7-8750H octa-core CPU.
-
-#### Zipf Distribution of followers
-In this project, we have simulated a Zipf distribution on the number of followers/subscribers and number of tweets made for all active users. Below figures are sample distribution graphs of followers from three of our test simulations.
-
-* Total users: 500 | Max subscribers: 400
-![Zipf first graph](./images/zipf_500_400.png)
-
-* Total users: 100 | Max subscribers: 100
-![Zipf second graph](./images/zipf_100_100.png)
-
-* Total users: 50 | Max subscribers: 50
-![Zipf third graph](./images/zipf_50_50.png)
-
-#### Results
-Even though we could host a maximum of 100,000 users on the test machine, we are certain that this engine can easily do more because of its highly distributive nature, even within the engine.
+#### Results/Demo
+We can communicate between our Twitter server and client using REST and Websockets.
+Link to demo(Youtube) [] 
 
 #### Dependencies
 * Akka.Cluster~>1.4.10
@@ -81,6 +62,7 @@ Even though we could host a maximum of 100,000 users on the test machine, we are
 * Akka.Remote~>1.4.12
 * Akka.TestKit~>1.4.12
 * MathNet.Numerics~>4.12.0
+* Suave~>2.4.6
 
 #### Tested and Dvelopend on OS
 * GNU/Linux,Windows
@@ -88,4 +70,4 @@ Even though we could host a maximum of 100,000 users on the test machine, we are
 #### References
 [1] [F#](https://fsharp.org/docs/)
 [2] [Akka.net](https://getakka.net/articles/intro/what-is-akka.html)
-
+[3] [Suave](https://suave.io/)
