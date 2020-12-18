@@ -102,49 +102,48 @@ let Simulator (mailbox: Actor<_>) =
                 userActors.[i] <! Register(makeUserId(i),randomStr 12)
             totalTasks<-userActors.Length*2
 
-           
+            // giving some time for signing up all the users
+
+            // login all the users signed up
+            // this could be changed to simulate periodic active span of users.
+            // for i in 0..(userActors.Length-1) do
+
+            // creating a zipf distribution of subscribers.
+            // The max count of subscribers is passed from the command line
+            System.Threading.Thread.Sleep(2000)    
+
             let mutable followingSize = 0
             let mutable userStr = ""
             let mutable tweetCount = 0
             let mutable retweetCount = 0
             let mutable loggedOut = 0
             let mutable currFollowing: Set<int> = Set.empty
-
-            for userNum in 0..(totalUsers-1) do
-                userStr <-(makeUserId(userNum))
-                printfn "%s" userStr
-                followingSize <- followingSizes.[userNum]
-                userActors.[userNum] <! Login
-
             
-            // System.Threading.Thread.Sleep(100)    
+            userActors.[3] <! Login
+            printfn "login hua"
+            System.Threading.Thread.Sleep(2000)
+            printfn "follow bheja"
+            userActors.[3] <! FollowUser(makeUserId(4))
 
             // for userNum in 0..(totalUsers-1) do
-                // userActors.[userNum] <! InitSocket
-
-            System.Threading.Thread.Sleep(10000)    
-
-            // for userNum in 0..(totalUsers-1) do
-                // userActors.[userNum] <! Logout
+            //     userStr <-(makeUserId(userNum))
+            //     printfn "%s" userStr
+            //     followingSize <- followingSizes.[userNum]
+            //     userActors.[userNum] <! Login
                 
-            // giving some time for signing up all the users
-
-            // login all the users signed up
-            // this could be changed to simulate periodic active span of users.
-            // for i in 0..(userActors.Length-1) do
-            
-            // creating a zipf distribution of subscribers.
-            // The max count of subscribers is passed from the command line
-        //         for _ in 1..followingSize do
-        //             let mutable randUser = getRandomUser userNum totalUsers
-        //             // check if the user is already followed
-        //             while currFollowing.Contains randUser do
-        //                 randUser <- getRandomUser userNum totalUsers
-        //             currFollowing <- currFollowing.Add(randUser)
-        //             printfn "%s following %s" (makeUserId(userNum)) (makeUserId(randUser))
-        //             userActors.[userNum] <! FollowUser(makeUserId(randUser))
-        //         currFollowing <- Set.empty
-        //     totalTasks <- Array.sum followingSizes + totalTasks
+            //     System.Threading.Thread.Sleep(1000)    
+                
+            //     for _ in 1..followingSize do
+            //         let mutable randUser = getRandomUser userNum totalUsers
+            //         // check if the user is already followed
+            //         while currFollowing.Contains randUser do
+            //             randUser <- getRandomUser userNum totalUsers
+            //         currFollowing <- currFollowing.Add(randUser)
+            //         printfn "%s following %s" (makeUserId(userNum)) (makeUserId(randUser))
+            //         let mutable task = userActors.[userNum] <? FollowUser(makeUserId(randUser))
+            //         Async.RunSynchronously(task) |> ignore
+            //     currFollowing <- Set.empty
+            // totalTasks <- Array.sum followingSizes + totalTasks
 
         //     for userNum in 0..(totalUsers-1) do
         //         userStr <- (makeUserId(userNum))

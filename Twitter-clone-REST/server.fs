@@ -84,9 +84,13 @@ let signOutUser (username:string) =
     response, status
 
 let followAccount (followerUsername: string) (followedUsername: string) =
+    printfn "followerUserName: %s | followedUserName: %s" followerUsername followedUsername
     let mutable response, status = "", false
+    printfn "Follow stage 1"
     globalData.Users.[followedUsername].AddToFollowers(followerUsername)
+    printfn "Follow stage 2"
     globalData.Users.[followerUsername].AddToFollowings(followedUsername)
+    printfn "Follow stage 3"
     response <- "User " + followerUsername + " started following user " + followedUsername
     status <- true
     response, status
@@ -165,7 +169,7 @@ let Server (mailbox: Actor<_>) =
                 for follower in followers do
                     if globalData.IsUserLoggedIn follower then
                         loggedInUserToClientMap.[follower] <! LiveFeed(tweet.Creator, tweet.Content)
-            mailbox.Sender() <! ApiResponse(response, status)
+            mailbox.Sender() <! (response, status)
         | RegisterReTweet(senderUser, content, subjectTweetId) ->
             let response, status, tweetID = distributeTweet senderUser content true subjectTweetId
             if status then
@@ -174,19 +178,21 @@ let Server (mailbox: Actor<_>) =
                 for follower in followers do
                     if globalData.IsUserLoggedIn follower then
                         loggedInUserToClientMap.[follower] <! LiveFeed(tweet.Creator, tweet.Content)
-            mailbox.Sender() <! ApiResponse(response, status)
+            mailbox.Sender() <! (response, status)
         | Follow(follower, followed) ->
+            printfn "server ka follow. follower: %s | followed: %s" follower followed
             let response, status = followAccount follower followed
-            mailbox.Sender() <! ApiResponse(response, status)
+            printfn "in server actor follow response: %s | status: %b" response status
+            mailbox.Sender() <! (response, status)
         | FindHashtags(username, searchTerm) ->
             let response, status, data = findHashtags username searchTerm
-            mailbox.Sender() <! ApiDataResponse(response, status, data)
+            mailbox.Sender() <! (response, status, data)
         | FindSubscribed(username) ->
             let response, status, data = findTweets username Subscribed
-            mailbox.Sender() <! ApiDataResponse(response, status, data)
+            mailbox.Sender() <! (response, status, data)
         | FindMentions(username) ->
             let response, status, data = findTweets username MyMentions
-            mailbox.Sender() <! ApiDataResponse(response, status, data)
+            mailbox.Sender() <! (response, status, data)
         | ShowData ->
             printfn "%A\n%A\n%A\n%A" globalData.Users globalData.LoggedInUsers globalData.Tweets globalData.Hashtags
         | _ -> failwith "Error"
@@ -210,8 +216,8 @@ let JSON v =
 let fromJson<'a> json =
   JsonConvert.DeserializeObject(json, typeof<'a>) :?> 'a
 
-let getCredsFromJsonString json =
-  JsonConvert.DeserializeObject(json, typeof<Credentials>) :?> Credentials
+let getArgsFromJsonString json =
+  JsonConvert.DeserializeObject(json, typeof<PayloadArgs>) :?> PayloadArgs
 
 
 let getString (rawForm: byte[]) = System.Text.Encoding.UTF8.GetString(rawForm)
@@ -220,13 +226,13 @@ let getResourceFromReq<'a> (req : HttpRequest) =
     let getString (rawForm: byte[]) = System.Text.Encoding.UTF8.GetString(rawForm)
     req.rawForm |> getString |> fromJson<'a>
 
-let parseCreds (req : HttpRequest) =
-    req.rawForm |> getString |> getCredsFromJsonString
+let parseArgs (req : HttpRequest) =
+    req.rawForm |> getString |> getArgsFromJsonString
 
 
 let registerUser (req: HttpRequest) = 
-    let creds = parseCreds req
-    let task = server <? SignUp(creds.Uid, creds.Password)
+    let creds = parseArgs req
+    let task = server <? SignUp(creds.Arg1, creds.Arg2)
     let resp, status = Async.RunSynchronously(task)
     if status then
         OK resp
@@ -234,8 +240,8 @@ let registerUser (req: HttpRequest) =
         NOT_ACCEPTABLE resp
 
 let loginUser (req: HttpRequest) = 
-    let creds = parseCreds req
-    let task = server <? SignIn(creds.Uid, creds.Password)
+    let creds = parseArgs req
+    let task = server <? SignIn(creds.Arg1, creds.Arg2)
     let resp, status = Async.RunSynchronously(task)
     if status then
         OK resp
@@ -243,18 +249,26 @@ let loginUser (req: HttpRequest) =
         NOT_ACCEPTABLE resp
 
 let logoutUser (req: HttpRequest) = 
-    let creds = parseCreds req
-    let task = server <? SignOut(creds.Uid)
+    let creds = parseArgs req
+    let task = server <? SignOut(creds.Arg1)
     let resp, status = Async.RunSynchronously(task)
     
     // clientWsDict.[creds.Uid].send Close (getBytes "END") false |> ignore
-    clientWsDict <- clientWsDict.Remove(creds.Uid)
+    // clientWsDict <- clientWsDict.Remove(creds.Uid)
     if status then
         printfn "\n\n Sending %s" "OK"
         OK resp
     else
         printfn "\n\n Sending %s" "MAA CHUDA LO"
         NOT_ACCEPTABLE resp
+
+let followUser (req: HttpRequest) = 
+    let creds = parseArgs req
+    printfn "parsed args are: %A" creds
+    let task = server <? Follow(creds.Arg1, creds.Arg2)
+    let resp, status = Async.RunSynchronously(task)
+    OK resp
+
 
 let webSocketFactory (uid: string) = 
   let ws (webSocket : WebSocket) (context: HttpContext) =
@@ -318,6 +332,7 @@ let app =
                 path "/register" >=> request registerUser
                 path "/login" >=> request loginUser
                 path "/logout" >=> request logoutUser
+                path "/follow" >=> request followUser
                  ]
         NOT_FOUND "Found no handlers." ]
 

@@ -1,8 +1,9 @@
 module CustomTypesMod
 
-type Credentials = {
-    Uid: string
-    Password: string
+type PayloadArgs = {
+    Arg1: string
+    Arg2: string
+    Arg3: string
 }
 
 type QueryType = 

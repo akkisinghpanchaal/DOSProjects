@@ -24,6 +24,7 @@ let loginUrl = twitterHostUrl + "/login"
 let logoutUrl = twitterHostUrl + "/logout"
 let signUpUrl = twitterHostUrl + "/register"
 let socketUrl = twitterHostUrl + "/websocket"
+let followUrl = twitterHostUrl + "/follow"
 
 let system = ActorSystem.Create("TwitterClient")
 
@@ -32,7 +33,9 @@ let TwitterApiCall (url: string) (method: string) (body: string) =
     | "GET" ->
         Http.RequestString(url, httpMethod = method)
     | "POST" ->
+        printfn "url: %s | method: %s | body: %s" url method body
         Http.RequestString(url, httpMethod = "POST", body = TextRequest body)
+    | _ -> "invalid rest method"
 
 type ClientMsgs =
     | Listen of ClientWebSocket
@@ -87,6 +90,7 @@ let connectAndPing (ws: ClientWebSocket)(port: int) (uid:string)= async {
     do! send ("Hello from "+uid) ws
     // close ws |> ignore
     let listener = spawn system ("listener"+uid) SocketListener
+    printfn "listener%s: %A" uid listener
     listener <! Listen(ws)
 }
 
@@ -99,21 +103,27 @@ let Client (mailbox: Actor<_>) =
         | Register(username, password) ->
             id <- username
             pwd <- password
+            printfn "id: '%s' | pwd: '%s' | username: '%s' | password: '%s'" id pwd username password
             // serverActor <! SignUp(id, pwd)
-            let resp = TwitterApiCall signUpUrl "POST" (sprintf """{"Uid":"%s", "Password":"%s"}""" id pwd)
+            let resp = TwitterApiCall signUpUrl "POST" (sprintf """{"Arg1":"%s", "Arg2":"%s", "Arg3":"%s"}""" id pwd "")
             printfn "Response from server: %s" resp
         | Login -> 
-            let resp = TwitterApiCall loginUrl "POST" (sprintf """{"Uid":"%s", "Password":"%s"}""" id pwd)
+            let resp = TwitterApiCall loginUrl "POST" (sprintf """{"Arg1":"%s", "Arg2":"%s", "Arg3":"%s"}""" id pwd "")
             printfn "Response from server: %s" resp
-            select ("/user/"+id) system <! InitSocket
+            printfn "login me id: '%s'" id
+            // select ("/user/"+id) system <! InitSocket
         | InitSocket -> 
+            printfn "lo bhai id or password lelo: '%s' | '%s'" id pwd
             let resp = TwitterApiCall (socketUrl + "/" + id) "GET" ""
             connectAndPing ws 8080 id |> Async.RunSynchronously
             printfn "Response from server: %s" resp
         | Logout -> 
-            let resp = TwitterApiCall logoutUrl "POST" (sprintf """{"Uid":"%s", "Password":"%s"}""" id "")
+            let resp = TwitterApiCall logoutUrl "POST" (sprintf """{"Arg1":"%s", "Arg2":"%s", "Arg3":"%s"}""" id "" "")
             printfn "Response from server: %s" resp
-            close ws |> Async.RunSynchronously
+            
+            // ToDo: Make this run
+            // close ws |> Async.RunSynchronously
+
             // send "CLOSE" ws |> Async.RunSynchronously
             // send ws |> Async.RunSynchronously
         // | GetMentions ->
@@ -126,8 +136,12 @@ let Client (mailbox: Actor<_>) =
         //     serverActor<! RegisterTweet(id, content) 
         // | SendReTweet(content,retweetId) ->
         //     serverActor<! RegisterReTweet(id, content, retweetId) 
-        // | FollowUser(followed) ->
-        //     serverActor <! Follow(id,followed)
+        | FollowUser(followed) ->
+            // serverActor <! Follow(id,followed)
+            printfn "client me follow bhejra: id: %s | followed: %s" id followed
+            let resp = TwitterApiCall followUrl "POST" (sprintf """{"Arg1":"%s", "Arg2":"%s", "Arg3":"%s"}""" id followed "")
+            printfn "client me follow ka response aya"
+            printfn "Response from server: %s" resp
         // | LiveFeed(tweetCreator, tweetContent) ->
         //     printfn "Live Update for @%s => @%s tweeted %s\n" id tweetCreator tweetContent
         // | ApiResponse(response, status) ->
