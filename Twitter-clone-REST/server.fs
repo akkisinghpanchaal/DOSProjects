@@ -87,9 +87,11 @@ let followAccount (followerUsername: string) (followedUsername: string) =
     // printfn "followerUserName: %s | followedUserName: %s" followerUsername followedUsername
     let mutable response, status = "", false
     // printfn "Follow stage 1"
-    globalData.Users.[followedUsername].AddToFollowers(followerUsername)
+    if globalData.Users.ContainsKey followedUsername then 
+        globalData.Users.[followedUsername].AddToFollowers(followerUsername)
     // printfn "Follow stage 2"
-    globalData.Users.[followerUsername].AddToFollowings(followedUsername)
+    if globalData.Users.ContainsKey followerUsername then 
+        globalData.Users.[followerUsername].AddToFollowings(followedUsername)
     // printfn "Follow stage 3"
     response <- "User " + followerUsername + " started following user " + followedUsername
     status <- true
@@ -182,15 +184,15 @@ let Server (mailbox: Actor<_>) =
         | Follow(follower, followed) ->
             let response, status = followAccount follower followed
             mailbox.Sender() <! (response, status)
-        | FindHashtags(username, searchTerm) ->
-            let response, status, data = findHashtags username searchTerm
-            mailbox.Sender() <! (response, status, data)
-        | FindSubscribed(username) ->
-            let response, status, data = findTweets username Subscribed
-            mailbox.Sender() <! (response, status, data)
-        | FindMentions(username) ->
-            let response, status, data = findTweets username MyMentions
-            mailbox.Sender() <! (response, status, data)
+        // | FindHashtags(username, searchTerm) ->
+        //     let response, status, data = findHashtags username searchTerm
+        //     mailbox.Sender() <! (response, status, data)
+        // | FindSubscribed(username) ->
+        //     let response, status, data = findTweets username Subscribed
+        //     mailbox.Sender() <! (response, status, data)
+        // | FindMentions(username) ->
+        //     let response, status, data = findTweets username MyMentions
+        //     mailbox.Sender() <! (response, status, data)
         | ShowData ->
             printfn "%A\n%A\n%A\n%A" globalData.Users globalData.LoggedInUsers globalData.Tweets globalData.Hashtags
         | _ -> failwith "Error"
@@ -261,6 +263,7 @@ let logoutUser (req: HttpRequest) =
         NOT_ACCEPTABLE resp
 
 let followUser (req: HttpRequest) = 
+    printfn "Server URL hit :%s" req.url.OriginalString
     let creds = parseArgs req
     // printfn "parsed args are: %A" creds
     let task = server <? Follow(creds.Arg1, creds.Arg2)
@@ -270,6 +273,7 @@ let followUser (req: HttpRequest) =
 
 
 let postTweet (req: HttpRequest) = 
+    printfn "Server URL hit :%s" req.url.OriginalString
     let creds = parseArgs req
     let task = server <? RegisterTweet(creds.Arg1, creds.Arg2)
     let (resp:string) , (status:bool) = Async.RunSynchronously(task)
@@ -277,6 +281,7 @@ let postTweet (req: HttpRequest) =
     OK resp
 
 let postReTweet (req: HttpRequest) = 
+    printfn "Server URL hit :%s" req.url.OriginalString
     let creds = parseArgs req
     let task = server <? RegisterReTweet(creds.Arg1, creds.Arg2, int(creds.Arg3))
     let (resp:string) , (status:bool) = Async.RunSynchronously(task)
